@@ -219,7 +219,8 @@ func _wrong_submit(tag: String, data: RoundData) -> void:
 	_check_idle(tag)
 
 
-## Picks (or quick-tosses) the target and tosses it away: it must land back in its pile, still reachable.
+## Picks (or quick-tosses) the target and tosses it away: it must land back in its pile (the dig step afterwards
+## separately asserts it is still reachable).
 func _toss_target(tag: String, data: RoundData, pile: ObjectPile, via_quick_toss: bool) -> void:
 	var tj: int = pile.layout.ids.find(data.target_index)
 	if _hc._state != HandController.State.IDLE or not pile.is_active(tj):
@@ -415,6 +416,7 @@ func _segment_distance(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) -> fl
 
 func _check_floating(tag: String, pile: ObjectPile) -> void:
 	if not _initial_floating.has(pile):
+		_fail("%s: a pile was never registered for floating checks" % tag)
 		return
 	_stats["floating_checks"] += 1
 	var now: PackedByteArray = _floating_flags(pile)

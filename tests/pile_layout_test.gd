@@ -29,7 +29,11 @@ func _init() -> void:
 				total_max_y = maxf(total_max_y, p.y)
 			# Remove 200 random objects (tall ones fall far); every settle may only lower objects, never below a supporter.
 			var order: Array = range(pos.size())
-			order.shuffle()
+			for i in range(order.size() - 1, 0, -1): # seeded Fisher-Yates, so a failure reproduces
+				var swap: int = rng.randi() % (i + 1)
+				var tmp: int = order[i]
+				order[i] = order[swap]
+				order[swap] = tmp
 			var moved_total: int = 0
 			for r in mini(200, order.size()):
 				var j: int = order[r]

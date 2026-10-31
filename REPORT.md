@@ -124,7 +124,7 @@ Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle;
    `tests/picker_stress_test.tscn` (end-on, grazing and random rays, all difficulties) now compare hit distance. 0 mismatches.
    I first suspected the ray march stopped too early; the stress test did not support that, so I did not change the picker.
 4. KNOWN LIMITATION, not fixed (needs your call): right after a pile is built, 3-9% of objects rest on nothing by the strict
-   plan-view rule (per-round worst over 50 rounds, 5 seeds: Easy 3-6%, Medium 4-5%, Hard 7-9%, Expert 8-9%; the gap sizes
+   plan-view rule (per-round worst over 50 rounds, 5 seeds: Easy 2.7-6%, Medium 4-5%, Hard 7-9%, Expert 8-9.4% (seeds 1-5, 11, 12, 21, 77 across author and reviewers); the gap sizes
    "typically 6-10 cm, worst 33 cm" come from a throwaway script on one Hard seed and are not reproduced by any committed test). Cause: the heap
    placement rests each object between the highest and the average support under it, so it can end up embedded beside a
    higher neighbour with nothing touching beneath. Dropping those objects to their supports would visibly lower and compress
@@ -158,10 +158,20 @@ Review 4 (of 648368e + 1b9cc86, soak + settle fix): no blockers. 14 of 15 mutati
   existing CELL/PACK/DROP_TRIES; not a feel tunable).
 
 5. BEHAVIOUR CHANGE to flag (feel): settle now moves FEWER objects per removal. Over 200 random removals on the same Hard and Expert
-   piles the old rule moved 207-579 objects, the new one 124-245 (reviewer's measurement). The old centre-distance rule queued
+   piles the old rule moved 207-579 objects, the new one 124-245 (review 4's measurement; review 5 reproduced the new
+   124-190 but could not reproduce the old 207-579 figure, so treat the exact "before" number as unconfirmed). The old centre-distance rule queued
    objects that were not really resting on the removed one and missed ones that were; the new rule drops exactly what rested on
    it. Build placement (pile size, shape, positions) is byte-identical to before (reviewer compared 20 seeded piles). Tell me if the
    old, more "avalanche-y" feel was something you liked.
+
+Review 5 (of 0bdac79 + ac69337, the fixes above): no blockers/bugs/hard-rule violations. Reproduced both mutation claims
+(sphere query -> layout test fails; unrestored target -> soak fails), confirmed `query_below` is correct and not slower on Expert
+(200 removals about 32-48 ms, 200 tosses about 7 ms), confirmed build placement byte-identical to 6c56cc5, verified the HUD hint
+wiring for idle/inspect/found/new-round/abandon. Small items fixed in the following commit: layout test shuffle is now seeded;
+the soak's floating check fails (instead of silently skipping) on an unregistered pile; a comment that promised "reachable" now says
+"active". Not changed: the brute-force settle oracle ignores objects that fell in the same settle (cannot give false failures, could
+hide a chain-order bug; the soak's floating check partly covers it); the node-leak check cannot see a ~1 node/round leak.
+(These last small edits were not separately reviewed.)
 
 ## Blocked / skipped
 
