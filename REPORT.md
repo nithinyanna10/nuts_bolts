@@ -6,7 +6,7 @@ Rules honoured: no design/number/control changes, no push, no force ops. Design 
 ## Status
 - [x] 1. 1% lows (3faec7c, review fixes in the next commit)
 - [x] 2. Medium vs Expert average FPS
-- [ ] 3. Windows export preset + clean export
+- [x] 3. Windows export preset + clean export
 - [ ] 4. Soak test (50 random rounds)
 - [ ] 5. Fix soak-test bugs
 
@@ -78,6 +78,19 @@ Review 2 (of 068daa7 + 6e871f9): no blockers/bugs. RISKS: item-2 "proof" oversta
 refresh-cap flag only knew 60/120 Hz -> now 30-240 Hz + the screen's real rate. NITs: bad-index test thin -> now covers 99, -1,
 too few anchors and checks the running round is undisturbed; benchmark unseeded -> `seed=`. Fixed in the commit after 6e871f9
 (reviewed together with item 3).
+
+### 3. Windows export
+- Installed the official 4.7.2.stable Windows x86_64 export templates (debug + release) into
+  ~/Library/Application Support/Godot/export_templates/4.7.2.stable/ (outside the repo; downloaded from the Godot GitHub release).
+- `export_presets.cfg` (committed): preset "Windows Desktop", x86_64, embedded PCK, Forward+/Vulkan, no code signing, no icon,
+  `application/modify_resources=false` (so no rcedit/Wine is needed to export from macOS), exclude filter
+  `tests/*, REPORT.md, CLAUDE.md, .mcp.json`. `build/` is git-ignored.
+- Command: `godot --headless --path . --export-release "Windows Desktop" build/windows/WheresThatScrew.exe`
+  -> exit 0, no warnings/errors in the log, 109 MB `PE32+ executable (GUI) x86-64`.
+- Verified without a Windows machine: exported the same content as a .pck and booted the game from the pack alone
+  (`godot --main-pack game.pck`, headless 240 frames and windowed 400 frames): no errors; the pack contains no tests/docs.
+- NOT verified: actually running the .exe on Windows (no Windows machine or Wine here), GPU compatibility (Forward+ needs a
+  Vulkan 1.2-class GPU), Windows presentation/frame pacing. No app icon or version resource is embedded (needs rcedit).
 
 ## Blocked / skipped
 

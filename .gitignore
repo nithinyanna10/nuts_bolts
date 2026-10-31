@@ -7,3 +7,6 @@ export_credentials.cfg
 /android/
 *.tmp
 .DS_Store
+
+# Exported builds
+build/
