@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/fps_counter.gd" id="1"]
+
+[sub_resource type="LabelSettings" id="1"]
+font_size = 22
+outline_size = 6
+outline_color = Color(0, 0, 0, 0.8)
+
+[node name="Hud" type="CanvasLayer"]
+
+[node name="Fps" type="Label" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -160.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 44.0
+grow_horizontal = 0
+label_settings = SubResource("1")
+horizontal_alignment = 2
+script = ExtResource("1")

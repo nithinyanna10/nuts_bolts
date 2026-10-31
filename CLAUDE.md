@@ -22,5 +22,5 @@ Stylized low-poly 3D first-person game. Godot 4, GDScript, Jolt physics, Forward
 
 ## Layout
 - `scenes/{main,player,warehouse,screws,equipment,ui}`
-- `scripts/{player,inventory,collection,economy,upgrades,procedural}`
+- `scripts/{player,inventory,collection,economy,upgrades,procedural,ui}`
 - `assets/{audio,materials,meshes}`
