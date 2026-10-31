@@ -129,6 +129,12 @@ Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle;
    higher neighbour with nothing touching beneath. Dropping those objects to their supports would visibly lower and compress
    the piles (a pile-size change), so I left it. The soak test guards it (fails above 15%) and removal/settle never makes it worse.
 
+### Playtest note (you, after you came back)
+"Once I select a nut there is no option to put it back (only E submit)": right-click toss already worked (tested with real input
+events), but nothing on screen said so while holding an object. The bottom hint now changes while inspecting to "E submit as the
+answer / Right-click toss it back / Mouse rotate it", and to "Press 1-4 for a new round" after a win. UI text only; controls unchanged.
+Open question: a toss lands the object in the ring beside the pile, not back in its exact spot. Say if you want a true "put back".
+
 ## Blocked / skipped
 
 ## Questions for you

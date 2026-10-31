@@ -4,6 +4,9 @@ extends Control
 @export var message_time: float = 2.5
 @export var good_color: Color = Color(0.45, 1.0, 0.55)
 @export var bad_color: Color = Color(1.0, 0.4, 0.3)
+@export var help_idle: String = "LMB pick up   RMB toss   E submit   C crouch   Q lean in   1-4 new round"
+@export var help_inspect: String = "E  submit as the answer      Right-click  toss it back      Mouse  rotate it"
+@export var help_found: String = "Press 1-4 for a new round"
 
 var _message_tween: Tween
 
@@ -12,6 +15,7 @@ var _message_tween: Tween
 @onready var _clock: Label = $Order/Margin/VBox/Clock
 @onready var _message: Label = $Message
 @onready var _result: Label = $Result
+@onready var _help: Label = $Help
 
 
 func _ready() -> void:
@@ -21,9 +25,11 @@ func _ready() -> void:
 	EventBus.round_clock.connect(_on_clock)
 	EventBus.round_finished.connect(_on_round_finished)
 	EventBus.hud_message.connect(_on_message)
+	EventBus.inspect_changed.connect(func(active: bool, _fov: float) -> void: _help.text = help_inspect if active else help_idle)
 
 
 func _on_round_started(data: RoundData) -> void:
+	_help.text = help_idle
 	_title.text = "ORDER  -  %s" % data.config.display_name.to_upper()
 	_lines.text = "\n".join(data.order_lines())
 	_result.visible = false
@@ -35,6 +41,7 @@ func _on_clock(elapsed: float) -> void:
 
 
 func _on_round_finished(payout: int, elapsed: float) -> void:
+	_help.text = help_found
 	_result.text = "FOUND IT!   +$%d\n%.1f s   -   press 1-4 for a new round" % [payout, elapsed]
 	_result.visible = true
 
