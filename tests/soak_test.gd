@@ -29,8 +29,9 @@ var _main: Node
 var _rm: RoundManager
 var _hc: HandController
 var _player: Player
-var _stats := {"rounds": 0, "picks": 0, "tosses": 0, "quick_tosses": 0, "wrong": 0, "correct": 0, "abandoned": 0, "dug": 0, "floating_checks": 0, "double_requests": 0}
+var _stats := {"rounds": 0, "picks": 0, "tosses": 0, "quick_tosses": 0, "wrong": 0, "correct": 0, "abandoned": 0, "dug": 0, "floating_checks": 0, "double_requests": 0, "target_tosses": 0}
 var _unsupported_max: Dictionary = {} ## difficulty name -> worst share of objects with no support right after building
+var _node_baseline: Dictionary = {} ## difficulty name -> node count after its first round started
 var _initial_floating: Dictionary = {} ## pile -> PackedByteArray of objects already unsupported when the pile was built
 
 
@@ -64,8 +65,7 @@ func _ready() -> void:
 		await _run_round(r, _rng.randi() % 4)
 	var nodes_end: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	print("nodes: %d after first round, %d at end" % [nodes_after_first, nodes_end])
-	if nodes_end > nodes_after_first * 3 + 200:
-		_fail("node count grew from %d to %d (leak?)" % [nodes_after_first, nodes_end])
+	print("nodes at start of each difficulty's first round: %s" % _node_baseline)
 	for e in _catcher.errors:
 		_fail("engine error: " + e)
 	var shares: String = ""
@@ -92,6 +92,11 @@ func _run_round(r: int, d: int) -> void:
 	if data.config.display_name != names[d]:
 		_fail("%s: second start request was not ignored (got %s)" % [tag, data.config.display_name])
 	_check_clean_start(tag)
+	var nodes_now: int = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	if not _node_baseline.has(names[d]):
+		_node_baseline[names[d]] = nodes_now
+	elif nodes_now > _node_baseline[names[d]] * 1.1 + 30: # the same difficulty must always cost about the same
+		_fail("%s: %d nodes, first %s round had %d (leak?)" % [tag, nodes_now, names[d], _node_baseline[names[d]]])
 	_check_one_match(tag, data)
 	for pile in _rm.piles:
 		var flags: PackedByteArray = _floating_flags(pile)
@@ -108,26 +113,31 @@ func _run_round(r: int, d: int) -> void:
 	var money_before: int = _eco.money
 	var plan: float = _rng.randf()
 	var target_pile: ObjectPile = _rm.piles[data.pile_of[data.target_index]]
+	var any_pile: ObjectPile = _rm.piles[_rng.randi() % _rm.piles.size()] # Hard/Expert have several piles
 	var dug: bool = false
 
 	# Always: a pick + toss, then a wrong submit.
-	await _pick_random_non_target(tag, target_pile)
+	await _pick_random_non_target(tag, any_pile)
 	if _hc._state == HandController.State.INSPECT:
 		_check_tools(tag, data)
 		_hc._toss_held()
 		_stats["tosses"] += 1
 		await _flights_done(tag)
 		_check_idle(tag)
-	await _pick_random_non_target(tag, target_pile)
+	await _pick_random_non_target(tag, any_pile)
 	if _hc._state == HandController.State.INSPECT:
 		await _wrong_submit(tag, data)
 
+	# The player may pick the TARGET itself and toss it (or quick-toss it): it must come back, not get lost.
+	await _toss_target(tag, data, target_pile, _rng.randf() < 0.5)
+
 	# Dig with quick-tosses (settle animations), checking nothing starts floating.
 	for k in _rng.randi_range(3, 12):
-		_quick_toss_random(tag, target_pile)
+		_quick_toss_random(tag, any_pile)
 		await get_tree().process_frame
-	await _settle_done(target_pile)
-	_check_floating(tag, target_pile)
+	for pile in _rm.piles:
+		await _settle_done(pile)
+		_check_floating(tag, pile)
 
 	await _flights_done(tag) # a quick-tossed object (possibly the target) is still in the air until it lands
 	if plan < 0.15: # abandon: start the next round while holding something
@@ -206,6 +216,27 @@ func _wrong_submit(tag: String, data: RoundData) -> void:
 		_fail("%s: bad plain message %s" % [tag, messages[0]])
 	if not pile.is_active(j):
 		_fail("%s: wrongly submitted object did not land back in the pile" % tag)
+	_check_idle(tag)
+
+
+## Picks (or quick-tosses) the target and tosses it away: it must land back in its pile, still reachable.
+func _toss_target(tag: String, data: RoundData, pile: ObjectPile, via_quick_toss: bool) -> void:
+	var tj: int = pile.layout.ids.find(data.target_index)
+	if _hc._state != HandController.State.IDLE or not pile.is_active(tj):
+		return
+	_hc._set_hover(pile, tj)
+	if via_quick_toss:
+		_hc._quick_toss()
+	else:
+		_hc._pick()
+		if not await _wait_until(func() -> bool: return _hc._state == HandController.State.INSPECT, 2.0):
+			_fail("%s: could not pick up the target to toss it" % tag)
+			return
+		_hc._toss_held()
+	_stats["target_tosses"] += 1
+	await _flights_done(tag)
+	if not pile.is_active(tj):
+		_fail("%s: the target was lost after being tossed" % tag)
 	_check_idle(tag)
 
 
@@ -383,6 +414,8 @@ func _segment_distance(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) -> fl
 
 
 func _check_floating(tag: String, pile: ObjectPile) -> void:
+	if not _initial_floating.has(pile):
+		return
 	_stats["floating_checks"] += 1
 	var now: PackedByteArray = _floating_flags(pile)
 	var before: PackedByteArray = _initial_floating[pile]

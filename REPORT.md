@@ -124,7 +124,8 @@ Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle;
    `tests/picker_stress_test.tscn` (end-on, grazing and random rays, all difficulties) now compare hit distance. 0 mismatches.
    I first suspected the ray march stopped too early; the stress test did not support that, so I did not change the picker.
 4. KNOWN LIMITATION, not fixed (needs your call): right after a pile is built, 3-9% of objects rest on nothing by the strict
-   plan-view rule (worst: Expert 8-9%, Hard 7-8%, Easy/Medium 3-5%; typical gap 6-10 cm, worst seen 33 cm). Cause: the heap
+   plan-view rule (per-round worst over 50 rounds, 5 seeds: Easy 3-6%, Medium 4-5%, Hard 7-9%, Expert 8-9%; the gap sizes
+   "typically 6-10 cm, worst 33 cm" come from a throwaway script on one Hard seed and are not reproduced by any committed test). Cause: the heap
    placement rests each object between the highest and the average support under it, so it can end up embedded beside a
    higher neighbour with nothing touching beneath. Dropping those objects to their supports would visibly lower and compress
    the piles (a pile-size change), so I left it. The soak test guards it (fails above 15%) and removal/settle never makes it worse.
@@ -134,6 +135,33 @@ Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle;
 events), but nothing on screen said so while holding an object. The bottom hint now changes while inspecting to "E submit as the
 answer / Right-click toss it back / Mouse rotate it", and to "Press 1-4 for a new round" after a win. UI text only; controls unchanged.
 Open question: a toss lands the object in the ring beside the pile, not back in its exact spot. Say if you want a true "put back".
+
+Review 3 (of b8b2291 + 6c56cc5, export + benchmark): no blockers/bugs. Verified export content, clean boot from the pack,
+seed= reproducibility, mutation-checked the bad-index test. Notes: the pack boot does not exercise the embedded-PCK path of the
+.exe or the Windows runtime (REPORT already says the .exe was never run); disabled shop/magnet content still ships (see Ideas).
+
+Review 4 (of 648368e + 1b9cc86, soak + settle fix): no blockers. 14 of 15 mutations were caught. Findings and my response:
+- BUG (test gap): a lost target was not caught (soak never tossed the target on purpose). -> soak now picks or quick-tosses the
+  target in every round and asserts it lands back (mutation "flown target never restored" is now caught).
+- BUG (settle, small): the supporter search was a sphere, so a supporter far BELOW a falling object could be missed and the object
+  dropped through it (about 2 in 500 objects; 3 objects embedded 3.5-4.8 cm in real removals). -> new `SpatialGrid.query_below`
+  (horizontal radius, any depth below); settle and `plan_landing` use it. `tests/pile_layout_test.gd` now removes 200 RANDOM objects
+  per pile and checks every moved object against a brute-force scan of all objects (independent of the grid query); with the old
+  sphere query it fails, with the fix it passes. (My first version of that oracle was circular and failed on correct code; fixed
+  by excluding objects that fell in the same settle.)
+- RISK: the soak's floating rule shares its abstraction (axis segment + radius) with the code under test. True; the brute-force
+  settle check above is a second, differently-built check. Residual: a systematic flaw in "plan-view segment" support, e.g.
+  ignoring tilt, would pass both.
+- RISK (coverage): only the target pile was exercised. -> picks, quick-tosses and floating checks now cover all piles
+  (Hard 3, Expert 5); the node-leak check is per difficulty (same difficulty must stay within +10% +30 nodes of its first round).
+- NIT: REPORT numbers understated. -> corrected in 5.4 below. NIT: settle/touch constants are consts, not exports (same as the
+  existing CELL/PACK/DROP_TRIES; not a feel tunable).
+
+5. BEHAVIOUR CHANGE to flag (feel): settle now moves FEWER objects per removal. Over 200 random removals on the same Hard and Expert
+   piles the old rule moved 207-579 objects, the new one 124-245 (reviewer's measurement). The old centre-distance rule queued
+   objects that were not really resting on the removed one and missed ones that were; the new rule drops exactly what rested on
+   it. Build placement (pile size, shape, positions) is byte-identical to before (reviewer compared 20 seeded piles). Tell me if the
+   old, more "avalanche-y" feel was something you liked.
 
 ## Blocked / skipped
 

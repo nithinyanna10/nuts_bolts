@@ -61,6 +61,23 @@ func query_into(center: Vector3, radius: float, out: PackedInt32Array) -> int:
 	return count
 
 
+## Ids within a horizontal radius of center, at or below center.y and no more than `below` under it.
+## (A sphere would miss a supporter that is far below but close in plan view.)
+func query_below(center: Vector3, radius: float, below: float) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var lo: Vector3i = _key(Vector3(center.x - radius, center.y - below, center.z - radius))
+	var hi: Vector3i = _key(Vector3(center.x + radius, center.y, center.z + radius))
+	var r2: float = radius * radius
+	for x in range(lo.x, hi.x + 1):
+		for y in range(lo.y, hi.y + 1):
+			for z in range(lo.z, hi.z + 1):
+				for id: int in _cells.get(Vector3i(x, y, z), EMPTY):
+					var p: Vector3 = positions[id]
+					if p.y <= center.y and p.y >= center.y - below and (p.x - center.x) * (p.x - center.x) + (p.z - center.z) * (p.z - center.z) <= r2:
+						out.append(id)
+	return out
+
+
 ## Every id in the 27 cells around a point, no distance filter (for ray marching).
 func neighbors_into(point: Vector3, out: PackedInt32Array) -> int:
 	var count: int = 0

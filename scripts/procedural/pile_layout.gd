@@ -127,7 +127,7 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 		queue.remove_at(qi)
 		var pk: Vector3 = grid.positions[k]
 		var new_y: float = half_vert[k]
-		for m in grid.query(pk, _reach(k)):
+		for m in grid.query_below(pk, _reach(k), pk.y + 0.1): # supporters can be far below, not just nearby
 			var pm: Vector3 = grid.positions[m]
 			if m != k and pm.y < pk.y and _touching(pk, rot[k], half[k], pm, rot[m], half[m]):
 				new_y = maxf(new_y, pm.y + half_vert[m] + half_vert[k])
@@ -194,7 +194,7 @@ func plan_landing(j: int, cfg: DifficultyConfig, rng: RandomNumberGenerator) -> 
 	var z: float = sin(ang) * spot
 	var basis: Basis = _rest_basis(long, rng)
 	var y: float = half_vert[j]
-	for m in grid.query(Vector3(x, 1.0, z), _reach(j) + 1.0):
+	for m in grid.query_below(Vector3(x, 20.0, z), _reach(j), 20.0):
 		if _touching(Vector3(x, 0.0, z), basis, half[j], grid.positions[m], rot[m], half[m]):
 			y = maxf(y, grid.positions[m].y + half_vert[m] + half_vert[j])
 	return Transform3D(basis, Vector3(x, y, z))

@@ -27,20 +27,34 @@ func _init() -> void:
 					_fail("%s: bad position %s" % [name, p])
 					break
 				total_max_y = maxf(total_max_y, p.y)
-			# Remove the 20 lowest objects; every settle may only lower objects, never below the floor.
+			# Remove 200 random objects (tall ones fall far); every settle may only lower objects, never below a supporter.
 			var order: Array = range(pos.size())
-			order.sort_custom(func(a: int, b: int) -> bool: return pos[a].y < pos[b].y)
+			order.shuffle()
 			var moved_total: int = 0
-			for r in mini(20, order.size()):
+			for r in mini(200, order.size()):
 				var j: int = order[r]
 				var before: PackedVector3Array = layout.grid.positions.duplicate()
 				var moved: PackedInt32Array = layout.remove_and_settle(j)
 				moved_total += moved.size()
+				var moved_flag := PackedByteArray()
+				moved_flag.resize(pos.size())
 				for m in moved:
+					moved_flag[m] = 1 # objects that fell in this same settle rest on others, so they cannot be oracle supporters
+				for i in moved.size():
+					var m: int = moved[i]
 					var after: Vector3 = layout.grid.positions[m]
 					if after.y > before[m].y or after.y < layout.half_vert[m] - 0.001:
 						_fail("%s: settle moved object %d from %.3f to %.3f" % [name, m, before[m].y, after.y])
-			print("%-7s pile %d: %d objects, radius %.2f m, max height %.2f m, settled %d objects over 20 removals, build+test %d ms" % [name, k, layout.ids.size(), radius, total_max_y, moved_total, Time.get_ticks_msec() - t0])
+					# Independent of the grid query: a moved object must not end up below any object that touches it and
+					# was lower than it (brute force over every active object).
+					var expected: float = layout.half_vert[m]
+					for o in pos.size():
+						var po: Vector3 = layout.grid.positions[o]
+						if o != m and layout.active[o] == 1 and moved_flag[o] == 0 and po.y < layout.moved_from_y[i] and layout._touching(after, layout.rot[m], layout.half[m], po, layout.rot[o], layout.half[o]):
+							expected = maxf(expected, po.y + layout.half_vert[o] + layout.half_vert[m])
+					if after.y < expected - 0.002:
+						_fail("%s: settle dropped object %d to %.3f, through a supporter (should rest at %.3f)" % [name, m, after.y, expected])
+			print("%-7s pile %d: %d objects, radius %.2f m, max height %.2f m, settled %d objects over 200 removals, build+test %d ms" % [name, k, layout.ids.size(), radius, total_max_y, moved_total, Time.get_ticks_msec() - t0])
 			t0 = Time.get_ticks_msec()
 	print("TOTAL FAILURES: %d" % _failures)
 	quit(1 if _failures > 0 else 0)
