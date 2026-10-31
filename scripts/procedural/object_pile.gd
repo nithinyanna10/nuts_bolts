@@ -26,6 +26,8 @@ var _anim_t := PackedFloat32Array()
 var _hidden := PackedByteArray() ## 1 while an object is drawn elsewhere (held, hovered, in flight)
 var _displayed_y: Dictionary = {} ## local index -> y currently drawn, only while settling
 var last_hit_distance: float = 0.0
+var _bound_center: Vector3 ## pile-local sphere that contains every object, including tossed ones
+var _bound_radius: float = 0.0
 
 
 func build(round_data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void:
@@ -69,6 +71,14 @@ func build(round_data: RoundData, pile_index: int, rng: RandomNumberGenerator) -
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if cast_shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.custom_aabb = AABB(Vector3(-reach, -0.5, -reach), Vector3(reach * 2.0, 4.0, reach * 2.0)) # shaders move vertices
 		add_child(node)
+
+	var top: float = 0.0
+	for p in layout.grid.positions:
+		top = maxf(top, p.y)
+	var ring: float = layout.radius + cfg.toss_distance_max + layout.max_foot * 2.0
+	var height: float = top + layout.max_foot * 2.0 + 1.0 # room for tossed objects to stack
+	_bound_center = Vector3(0.0, height / 2.0, 0.0)
+	_bound_radius = sqrt(ring * ring + height * height / 4.0)
 
 	for j in n:
 		var g: int = layout.ids[j]
@@ -190,6 +200,11 @@ func _process(delta: float) -> void:
 func pick_ray(origin: Vector3, direction: Vector3, max_distance: float) -> int:
 	var o: Vector3 = to_local(origin)
 	var d: Vector3 = global_basis.inverse() * direction
+	# Cheap reject: skip piles whose bounding sphere the ray segment never touches.
+	var along: float = clampf((_bound_center - o).dot(d), 0.0, max_distance)
+	if (o + d * along).distance_squared_to(_bound_center) > _bound_radius * _bound_radius:
+		last_hit_distance = max_distance
+		return -1
 	var step: float = layout.grid.cell_size * 0.4
 	var best: int = -1
 	var best_t: float = max_distance

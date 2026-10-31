@@ -19,8 +19,9 @@ func _ready() -> void:
 	var main: Node = load("res://scenes/main/main.tscn").instantiate()
 	main.get_node("RoundManager").start_difficulty = difficulty
 	get_tree().root.add_child.call_deferred(main)
-	for i in 3:
-		await get_tree().process_frame
+	await get_tree().process_frame
+	var round_ready: Signal = get_tree().root.get_node("EventBus").round_started
+	await round_ready # the round builds over several frames behind the loading overlay
 	var eco: Node = get_tree().root.get_node("Economy")
 	var bus: Node = get_tree().root.get_node("EventBus")
 	bus.hud_message.connect(func(text: String, _p: bool) -> void: _messages.append(text))

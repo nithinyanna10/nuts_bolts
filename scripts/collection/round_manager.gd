@@ -13,6 +13,7 @@ var _config: DifficultyConfig
 var _rng := RandomNumberGenerator.new()
 var _elapsed: float = 0.0
 var _running: bool = false
+var _loading: bool = false
 
 
 func _ready() -> void:
@@ -33,20 +34,32 @@ func _unhandled_input(event: InputEvent) -> void:
 			start_round(i)
 
 
+## Builds a round behind the loading overlay, one pile per frame, so no single frame stalls
+## (Expert used to freeze for ~0.4 s). Awaitable. Ignored while a round is already loading.
 func start_round(difficulty_index: int) -> void:
+	if _loading:
+		return
+	_loading = true
+	_running = false
+	EventBus.loading_changed.emit(true) # listeners drop references to the old piles
+	await get_tree().process_frame # let the overlay reach the screen before the heavy work
 	for pile in piles:
 		pile.queue_free()
 	piles.clear()
 	_config = load(difficulty_files[difficulty_index])
 	data = ChallengeGenerator.new(_config).generate(_rng)
+	await get_tree().process_frame
 	for k in _config.pile_count:
 		var pile := ObjectPile.new()
 		pile.position = pile_anchors[k]
 		add_child(pile)
 		pile.build(data, k, _rng)
 		piles.append(pile)
+		await get_tree().process_frame
 	_elapsed = 0.0
 	_running = true
+	_loading = false
+	EventBus.loading_changed.emit(false)
 	EventBus.round_started.emit(data)
 
 

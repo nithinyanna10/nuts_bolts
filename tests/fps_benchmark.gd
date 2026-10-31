@@ -15,12 +15,15 @@ func _ready() -> void:
 	get_tree().root.add_child.call_deferred(main)
 	for i in 3:
 		await get_tree().process_frame
+	var first_round: RoundManager = main.get_node("RoundManager")
+	while first_round._loading: # the game builds its first round on start
+		await get_tree().process_frame
 	var rm: RoundManager = main.get_node("RoundManager")
 	var player: Player = main.get_node("Player")
 	print("viewport %s, %s" % [get_viewport().get_visible_rect().size, RenderingServer.get_video_adapter_name()])
 	print("%-8s %-9s %8s %9s %8s %7s %9s" % ["level", "view", "objects", "avg FPS", "1% low", "draws", "tris(k)"])
 	for d in 4:
-		rm.start_round(d)
+		await rm.start_round(d)
 		await get_tree().create_timer(1.0).timeout
 		var total: int = 0
 		for pile in rm.piles:

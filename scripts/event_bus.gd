@@ -4,6 +4,8 @@ extends Node
 @warning_ignore("unused_signal")
 signal round_started(data: RoundData)
 @warning_ignore("unused_signal")
+signal loading_changed(active: bool)
+@warning_ignore("unused_signal")
 signal round_clock(elapsed: float)
 @warning_ignore("unused_signal")
 signal round_finished(payout: int, elapsed: float)

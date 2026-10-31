@@ -92,6 +92,7 @@ func _ready() -> void:
 	_tools = InspectTools.new()
 	_tools.visible = false
 	_camera.add_child.call_deferred(_tools)
+	EventBus.loading_changed.connect(_on_loading_changed)
 	EventBus.round_started.connect(_on_round_started)
 	EventBus.submission_result.connect(_on_submission_result)
 	EventBus.inspect_changed.connect(func(active: bool, _fov: float) -> void:
@@ -112,13 +113,13 @@ func _make_node() -> MeshInstance3D:
 	return node
 
 
-func _on_round_started(data: RoundData) -> void:
-	_tools_on = data.config.inspect_tools
-	_tools.visible = false
-	if _tools_on:
-		_tools.build(data.config.units_per_mm, ObjDefs.PITCHES)
+## A new round is being built: forget the old piles and drop whatever is held, before they are freed.
+func _on_loading_changed(active: bool) -> void:
+	if not active:
+		return
 	_clear_hover(false)
 	_obj.visible = false
+	_tools.visible = false
 	for flight in _flights:
 		flight.node.visible = false
 		_flight_pool.append(flight.node)
@@ -126,7 +127,14 @@ func _on_round_started(data: RoundData) -> void:
 	_held_pile = null
 	_state = State.IDLE
 	_awaiting_result = false
+	_piles.clear()
 	EventBus.inspect_changed.emit(false, 0.0)
+
+
+func _on_round_started(data: RoundData) -> void:
+	_tools_on = data.config.inspect_tools
+	if _tools_on:
+		_tools.build(data.config.units_per_mm, ObjDefs.PITCHES)
 	_piles.clear()
 	for node in get_tree().get_nodes_in_group("object_pile"):
 		if not node.is_queued_for_deletion():
