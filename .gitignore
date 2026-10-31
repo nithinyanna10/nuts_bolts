@@ -1,0 +1,9 @@
+# Godot 4
+.godot/
+.import/
+*.translation
+export.cfg
+export_credentials.cfg
+/android/
+*.tmp
+.DS_Store
