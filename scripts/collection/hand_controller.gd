@@ -172,8 +172,7 @@ func _process(delta: float) -> void:
 			_obj.global_transform = _held_pose()
 			if active and not _awaiting_result:
 				if Input.is_action_just_pressed("submit"):
-					_awaiting_result = true
-					EventBus.object_submitted.emit(_held_pile.layout.ids[_held_j])
+					_submit()
 				elif Input.is_action_just_pressed("toss"):
 					_toss_held()
 		State.FOUND:
@@ -283,6 +282,14 @@ func _held_pose() -> Transform3D:
 ## Node transform for an object whose OBB center is at `center` with orientation `rotation`.
 func _pose(rotation: Basis, center: Vector3) -> Transform3D:
 	return Transform3D(rotation * _held_scale, center - rotation * Vector3(0.0, _held_axial, 0.0))
+
+
+## Hand the held object in as the answer (the E key). The round manager judges it and answers with submission_result.
+func _submit() -> void:
+	if _state != State.INSPECT or _awaiting_result:
+		return
+	_awaiting_result = true
+	EventBus.object_submitted.emit(_held_pile.layout.ids[_held_j])
 
 
 func _on_submission_result(correct: bool) -> void:

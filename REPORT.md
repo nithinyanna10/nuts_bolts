@@ -7,7 +7,7 @@ Rules honoured: no design/number/control changes, no push, no force ops. Design 
 - [x] 1. 1% lows (3faec7c, review fixes in the next commit)
 - [x] 2. Medium vs Expert average FPS
 - [x] 3. Windows export preset + clean export
-- [ ] 4. Soak test (50 random rounds)
+- [x] 4. Soak test (50 random rounds)
 - [ ] 5. Fix soak-test bugs
 
 ## Log
@@ -91,6 +91,25 @@ too few anchors and checks the running round is undisturbed; benchmark unseeded 
   (`godot --main-pack game.pck`, headless 240 frames and windowed 400 frames): no errors; the pack contains no tests/docs.
 - NOT verified: actually running the .exe on Windows (no Windows machine or Wine here), GPU compatibility (Forward+ needs a
   Vulkan 1.2-class GPU), Windows presentation/frame pacing. No app icon or version resource is embedded (needs rcedit).
+
+### 4. Soak test (`tests/soak_test.tscn`)
+`godot --headless --path . tests/soak_test.tscn -- rounds=50 seed=1` (about 100 s). Per round it: requests the round twice (the
+second must be ignored), checks a clean start (controller IDLE, player unlocked, no flights, flight pool full, piles known),
+exactly one matching object and all objects present; picks an exposed object, inspects, tosses it and checks it landed back;
+picks one and submits it wrong (penalty maths, message format per difficulty, money unchanged, object restored); quick-toss digs
+3-12 objects with settle animations; digs to the target with rays from above exactly like a player (target must become
+reachable); picks the target and submits it (payout = base + time bonus, money delta, FOUND state, a second submit pays
+nothing); sometimes abandons the round while holding an object. It also attaches an engine Logger (any engine error fails
+the run), checks nothing is stuck (every wait has a timeout), and checks the node count does not grow.
+Floating objects: independent physical rule (an object must be on the floor or touch a lower object in plan view with <= 2 cm
+gap, using 2D axis-segment distance). The check is "no object that was supported when the pile was built is floating after
+settle".
+Mutation-checked (each makes the soak fail, unmutated passes): settle disabled, state not reset on new round, payout off by one,
+no wrong-submit penalty, tossed object not restored, double round start allowed; an injected push_error is caught by the Logger.
+Input is driven through the controller's own methods (`_set_hover`, `_pick`, `_submit`, `_toss_held`, `_quick_toss`), not key
+events, because headless Godot cannot capture the mouse. The real key/mouse path was exercised earlier with a windowed script
+(hover, click, E) and is not part of the automated soak.
+Note: at this commit the soak FAILS on floating-after-settle; that is bug 1 below, fixed in the next commit.
 
 ## Blocked / skipped
 
