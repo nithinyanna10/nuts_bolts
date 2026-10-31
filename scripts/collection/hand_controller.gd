@@ -26,9 +26,14 @@ class Flight:
 @export var inspect_sensitivity: float = 0.008
 @export var inspect_fit_margin: float = 2.1
 @export var inspect_min_distance: float = 0.55
-@export var inspect_max_distance: float = 1.4
+@export var inspect_max_distance: float = 1.6
 @export var pick_time: float = 0.2
 @export var pick_arc: float = 0.1
+
+@export_group("Tools (Hard/Expert)")
+@export var tools_pitch: float = 0.2 ## head tilt toward you when tools are shown (keeps the axis near vertical)
+@export var tools_object_x: float = -0.3 ## object sits left of the ruler
+@export var tools_fit_margin: float = 1.75
 
 @export_group("Toss")
 @export var toss_time: float = 0.5
@@ -62,6 +67,9 @@ var _pick_t: float = 0.0
 var _pick_from_center: Vector3
 var _pick_from_q: Quaternion
 
+var _tools: InspectTools
+var _tools_on: bool = false
+var _inspect_shift: Vector3 = Vector3.ZERO
 var _inspect_light: OmniLight3D
 var _flight_pool: Array[MeshInstance3D] = []
 var _flights: Array[Flight] = []
@@ -81,6 +89,9 @@ func _ready() -> void:
 	_inspect_light.light_energy = 0.0
 	_inspect_light.position = inspect_light_offset
 	_camera.add_child.call_deferred(_inspect_light)
+	_tools = InspectTools.new()
+	_tools.visible = false
+	_camera.add_child.call_deferred(_tools)
 	EventBus.round_started.connect(_on_round_started)
 	EventBus.submission_result.connect(_on_submission_result)
 	EventBus.inspect_changed.connect(func(active: bool, _fov: float) -> void:
@@ -101,7 +112,11 @@ func _make_node() -> MeshInstance3D:
 	return node
 
 
-func _on_round_started(_data: RoundData) -> void:
+func _on_round_started(data: RoundData) -> void:
+	_tools_on = data.config.inspect_tools
+	_tools.visible = false
+	if _tools_on:
+		_tools.build(data.config.units_per_mm, ObjDefs.PITCHES)
 	_clear_hover(false)
 	_obj.visible = false
 	for flight in _flights:
@@ -222,7 +237,17 @@ func _pick() -> void:
 	var half: Vector3 = _held_pile.layout.half[_held_j]
 	var diameter: float = 2.0 * sqrt(half.x * half.x + half.y * half.y)
 	_inspect_dist = clampf(diameter / (2.0 * tan(deg_to_rad(inspect_fov) / 2.0)) * inspect_fit_margin, inspect_min_distance, inspect_max_distance)
-	_inspect_basis = Basis(Vector3.RIGHT, inspect_pitch)
+	_inspect_shift = Vector3.ZERO
+	var pitch: float = inspect_pitch
+	if _tools_on:
+		pitch = tools_pitch
+		_inspect_shift = Vector3(tools_object_x, 0.0, 0.0)
+		var needed: float = _tools.length_world * tools_fit_margin / (2.0 * tan(deg_to_rad(inspect_fov) / 2.0))
+		_inspect_dist = clampf(maxf(_inspect_dist, needed), inspect_min_distance, 2.0)
+		# Zero line = where the head plane sits when the axis is vertical; tools share the object's depth.
+		_tools.position = Vector3(tools_object_x, -_held_axial * cos(pitch), -_inspect_dist)
+		_tools.visible = true
+	_inspect_basis = Basis(Vector3.RIGHT, pitch)
 	_pick_from_center = _held_pile.object_world_center(_held_j)
 	_pick_from_q = _held_pile.layout.rot[_held_j].get_rotation_quaternion()
 	_pick_t = 0.0
@@ -240,7 +265,7 @@ func _held_rotation() -> Basis:
 
 
 func _held_center() -> Vector3:
-	return _camera.global_position - _camera.global_basis.z * _inspect_dist
+	return _camera.global_position + _camera.global_basis * (_inspect_shift + Vector3(0.0, 0.0, -_inspect_dist))
 
 
 func _held_pose() -> Transform3D:
@@ -268,6 +293,7 @@ func _toss_held() -> void:
 	var center: Vector3 = _held_center()
 	var q: Quaternion = _held_rotation().get_rotation_quaternion()
 	_obj.visible = false
+	_tools.visible = false
 	_state = State.IDLE
 	EventBus.inspect_changed.emit(false, 0.0)
 	_launch(_held_pile, _held_j, center, q)

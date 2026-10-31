@@ -12,7 +12,12 @@ func _fail(msg: String) -> void:
 
 
 func _ready() -> void:
+	var difficulty: int = 0
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("difficulty="):
+			difficulty = int(arg.get_slice("=", 1))
 	var main: Node = load("res://scenes/main/main.tscn").instantiate()
+	main.get_node("RoundManager").start_difficulty = difficulty
 	get_tree().root.add_child.call_deferred(main)
 	for i in 3:
 		await get_tree().process_frame
@@ -22,10 +27,10 @@ func _ready() -> void:
 	var rm: RoundManager = main.get_node("RoundManager")
 	var hc: HandController = main.get_node("Player/Head/Camera3D/HandController")
 	var player: Player = main.get_node("Player")
-	var pile: ObjectPile = rm.piles[0]
 	var data: RoundData = rm.data
+	var pile: ObjectPile = rm.piles[data.pile_of[data.target_index]] # the pile holding the target
 	var target_j: int = pile.layout.ids.find(data.target_index)
-	print("round: ", " | ".join(data.order_lines()), " | target local ", target_j, " of ", pile.object_count())
+	print("difficulty ", data.config.display_name, ": ", pile.object_count(), " objects in target pile, ", rm.piles.size(), " piles | ", " | ".join(data.order_lines()), " | target local ", target_j, " of ", pile.object_count())
 
 	# 1. Ray picking: the grid-marched result must equal the brute-force nearest OBB hit, for random rays.
 	var rng := RandomNumberGenerator.new()
@@ -68,8 +73,13 @@ func _ready() -> void:
 	bus.object_submitted.emit(pile.layout.ids[wrong_j])
 	await get_tree().create_timer(0.1).timeout
 	print("wrong submit message: ", _messages)
-	if _messages.is_empty() or not _messages[0].begins_with("Wrong "):
+	var detailed: bool = data.config.show_wrong_property
+	if _messages.is_empty():
 		_fail("no wrong-submit message")
+	elif detailed and not _messages[0].begins_with("Wrong ") or not detailed and not _messages[0].begins_with("Wrong."):
+		_fail("wrong message format for this difficulty: %s" % _messages[0])
+	elif not detailed and ":" in _messages[0]:
+		_fail("hard/expert must not say which property was wrong: %s" % _messages[0])
 	if eco.money != 0:
 		_fail("money changed on wrong submit")
 	await get_tree().create_timer(0.8).timeout
