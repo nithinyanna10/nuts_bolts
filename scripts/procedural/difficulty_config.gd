@@ -21,6 +21,9 @@ extends Resource
 
 @export_group("Pile")
 @export var units_per_mm: float = 0.005 ## world meters per nominal mm (oversized on purpose)
-@export var pile_layers: float = 3.0 ## average stack depth; sets the pile radius
+@export var pile_slope: float = 0.7 ## repose slope of the mound (height / run)
+@export var pile_packing: float = 0.22 ## object volume as a fraction of the mound cone; sets the pile radius
 @export var pile_spread: float = 1.0
+@export var pile_center_bias: float = 0.8 ## position radius = R * rand^bias; 0.5 = uniform, higher = denser center
+@export var settle_time: float = 0.25 ## seconds for objects to drop after one is removed
 @export var grid_cell_size: float = 0.5

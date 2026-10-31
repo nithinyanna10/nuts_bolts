@@ -27,9 +27,6 @@ extends CharacterBody3D
 @export var fov_smoothing: float = 8.0
 @export var landing_dip_scale: float = 0.012
 @export var landing_dip_max: float = 0.12
-@export var release_fov_punch_per_screw: float = 0.12
-@export var release_fov_punch_max: float = 8.0
-@export var fov_punch_decay: float = 7.0
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _coyote: float = 0.0
@@ -39,7 +36,6 @@ var _land_dip: float = 0.0
 var _sprinting: bool = false
 var _base_fov: float
 var _fov: float
-var _fov_punch: float = 0.0
 
 @onready var _head: Node3D = $Head
 @onready var _camera: Camera3D = $Head/Camera3D
@@ -48,7 +44,6 @@ var _fov_punch: float = 0.0
 func _ready() -> void:
 	_base_fov = _camera.fov
 	_fov = _base_fov
-	EventBus.magnet_released.connect(_on_magnet_released)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -113,9 +108,5 @@ func _process(delta: float) -> void:
 
 	var target_fov: float = _base_fov + (sprint_fov_boost if _sprinting and speed > walk_speed * 0.9 else 0.0)
 	_fov = lerpf(_fov, target_fov, 1.0 - exp(-fov_smoothing * delta))
-	_fov_punch = lerpf(_fov_punch, 0.0, 1.0 - exp(-fov_punch_decay * delta))
-	_camera.fov = _fov + _fov_punch
+	_camera.fov = _fov
 
-
-func _on_magnet_released(count: int, _world_position: Vector3) -> void:
-	_fov_punch = minf(count * release_fov_punch_per_screw, release_fov_punch_max)

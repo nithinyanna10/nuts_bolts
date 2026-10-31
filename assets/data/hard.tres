@@ -17,4 +17,4 @@ bonus_per_second = 0.8
 wrong_penalty_seconds = 10.0
 show_wrong_property = false
 inspect_tools = true
-pile_layers = 6.0
+pile_packing = 0.22
