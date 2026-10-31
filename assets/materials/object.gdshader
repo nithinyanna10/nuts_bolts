@@ -12,7 +12,7 @@ uniform float body_len = 17.0;
 uniform float thread_dark : hint_range(0.0, 1.0) = 0.45;
 uniform float highlight : hint_range(0.0, 1.0) = 0.0;
 uniform bool use_override = false; // single node instead of MultiMesh
-uniform vec4 override_color : source_color = vec4(1.0);
+uniform vec4 override_color = vec4(1.0); // raw, same as MultiMesh COLOR (no sRGB conversion)
 uniform vec4 override_data = vec4(1.0, 1.0, 0.0, 0.0);
 
 varying float v_flag;

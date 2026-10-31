@@ -21,6 +21,11 @@ func remove(id: int) -> void:
 	(_cells.get(_key(positions[id]), EMPTY) as Array).erase(id)
 
 
+func add(id: int, position: Vector3) -> void:
+	positions[id] = position
+	_cell_of(position).append(id)
+
+
 func move(id: int, new_position: Vector3) -> void:
 	var old_key: Vector3i = _key(positions[id])
 	var new_key: Vector3i = _key(new_position)

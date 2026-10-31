@@ -26,4 +26,6 @@ extends Resource
 @export var pile_spread: float = 1.0
 @export var pile_center_bias: float = 0.8 ## position radius = R * rand^bias; 0.5 = uniform, higher = denser center
 @export var settle_time: float = 0.25 ## seconds for objects to drop after one is removed
+@export var toss_distance_min: float = 0.3 ## tossed objects land this far beyond the pile edge...
+@export var toss_distance_max: float = 1.4 ## ...up to this far
 @export var grid_cell_size: float = 0.5

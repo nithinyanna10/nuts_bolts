@@ -34,7 +34,7 @@ const CLASS_SPLIT_MEDIUM_LONG: int = 52
 const MATERIAL_COLORS: Dictionary = {
 	Mat.STEEL: Color(0.62, 0.64, 0.68),
 	Mat.BRASS: Color(0.85, 0.65, 0.2),
-	Mat.BLACK: Color(0.09, 0.09, 0.1),
+	Mat.BLACK: Color(0.15, 0.15, 0.17),
 	Mat.COPPER: Color(0.75, 0.36, 0.18),
 	Mat.ZINC: Color(0.4, 0.58, 0.85),
 }

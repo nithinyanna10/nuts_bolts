@@ -23,6 +23,8 @@ var _settle_time: float = 0.25
 var _anim_j := PackedInt32Array()
 var _anim_from := PackedFloat32Array()
 var _anim_t := PackedFloat32Array()
+var _hidden := PackedByteArray() ## 1 while an object is drawn elsewhere (held, hovered, in flight)
+var _displayed_y: Dictionary = {} ## local index -> y currently drawn, only while settling
 var last_hit_distance: float = 0.0
 
 
@@ -37,6 +39,7 @@ func build(round_data: RoundData, pile_index: int, rng: RandomNumberGenerator) -
 	_slot.resize(n)
 	_scale.resize(n)
 	_seen.resize(n)
+	_hidden.resize(n)
 
 	material = ShaderMaterial.new()
 	material.shader = SHADER
@@ -96,9 +99,24 @@ func is_active(j: int) -> bool:
 	return layout.active[j] == 1
 
 
-## Local transform at the object's current (settled) position.
+## Local transform as drawn right now (follows a settle animation in progress).
 func local_transform(j: int) -> Transform3D:
-	return Transform3D(layout.rot[j] * _scale[j], layout.origin_of(j, layout.grid.positions[j]))
+	var center: Vector3 = layout.grid.positions[j]
+	if _displayed_y.has(j):
+		center.y = _displayed_y[j]
+	return Transform3D(layout.rot[j] * _scale[j], layout.origin_of(j, center))
+
+
+func object_scale(j: int) -> float:
+	return _scale[j]
+
+
+func object_color(j: int) -> Color:
+	return (_multimeshes[_variant[j]] as MultiMesh).get_instance_color(_slot[j])
+
+
+func object_world_center(j: int) -> Vector3:
+	return global_position + layout.grid.positions[j]
 
 
 ## World transform of the drawn object (includes the uniform mesh scale).
@@ -107,31 +125,42 @@ func world_transform(j: int) -> Transform3D:
 
 
 func show_object(j: int) -> void:
+	_hidden[j] = 0
 	(_multimeshes[_variant[j]] as MultiMesh).set_instance_transform(_slot[j], local_transform(j))
 
 
 func hide_object(j: int) -> void:
+	_hidden[j] = 1
 	(_multimeshes[_variant[j]] as MultiMesh).set_instance_transform(_slot[j], HIDDEN)
+
+
+## A tossed object comes to rest: back into the heap (grid, picking) at its planned spot.
+func restore_object(j: int, landing: Transform3D) -> void:
+	layout.commit_landing(j, landing)
+	show_object(j)
+
+
+## Landing spot for a tossed object, in pile-local space (see PileLayout.plan_landing).
+func plan_landing(j: int, rng: RandomNumberGenerator) -> Transform3D:
+	return layout.plan_landing(j, data.config, rng)
 
 
 ## Takes object j out of play (hidden for good) and animates whatever rested on it down.
 func remove_object(j: int) -> void:
-	var before := PackedFloat32Array()
 	var moved: PackedInt32Array = layout.remove_and_settle(j)
 	hide_object(j)
-	for k in moved:
+	for i in moved.size():
+		var k: int = moved[i]
 		var idx: int = _anim_j.find(k)
-		var from_y: float = layout.grid.positions[k].y # final; real start is the displayed height
+		var start_y: float = _displayed_y.get(k, layout.moved_from_y[i])
 		if idx >= 0:
+			_anim_from[idx] = start_y
 			_anim_t[idx] = 0.0
 		else:
 			_anim_j.append(k)
-			_anim_from.append(_displayed_y.get(k, from_y))
+			_anim_from.append(start_y)
 			_anim_t.append(0.0)
 	set_process(not _anim_j.is_empty())
-
-
-var _displayed_y: Dictionary = {} ## local index -> y currently drawn (only for objects that have moved)
 
 
 func _process(delta: float) -> void:
@@ -144,8 +173,9 @@ func _process(delta: float) -> void:
 		var target: Vector3 = layout.grid.positions[j]
 		var y: float = lerpf(_anim_from[i], target.y, e)
 		_displayed_y[j] = y
-		var xf := Transform3D(layout.rot[j] * _scale[j], layout.origin_of(j, Vector3(target.x, y, target.z)))
-		(_multimeshes[_variant[j]] as MultiMesh).set_instance_transform(_slot[j], xf)
+		if _hidden[j] == 0:
+			var xf := Transform3D(layout.rot[j] * _scale[j], layout.origin_of(j, Vector3(target.x, y, target.z)))
+			(_multimeshes[_variant[j]] as MultiMesh).set_instance_transform(_slot[j], xf)
 		if t >= 1.0:
 			_displayed_y.erase(j)
 			_anim_j.remove_at(i)

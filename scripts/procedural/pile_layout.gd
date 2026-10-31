@@ -16,9 +16,11 @@ var axial_center := PackedFloat32Array() ## OBB center offset along the object's
 var half_vert := PackedFloat32Array() ## vertical half extent when resting
 var foot := PackedFloat32Array() ## horizontal footprint radius for support tests
 var active := PackedByteArray()
+var lying := PackedByteArray() ## 1 for screws and bolts (long axis horizontal when at rest)
 var grid := SpatialGrid.new() ## owns the OBB centers
 var radius: float = 0.0
 var max_foot: float = 0.0
+var moved_from_y := PackedFloat32Array() ## aligned with the last remove_and_settle() result: y before settling
 
 
 func build(data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void:
@@ -31,12 +33,14 @@ func build(data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void
 	foot.resize(n)
 	active.resize(n)
 	active.fill(1)
+	lying.resize(n)
 	rot.resize(n)
 
 	var volume: float = 0.0
 	for j in n:
 		var b: Vector3 = _bounds(data, ids[j], cfg.units_per_mm)
 		var long: bool = ObjDefs.has_length(data.cols[ObjDefs.Prop.TYPE][ids[j]])
+		lying[j] = 1 if long else 0
 		half[j] = Vector3(b.x, b.y, b.x)
 		axial_center[j] = b.z
 		half_vert[j] = b.x * PACK if long else b.y
@@ -54,13 +58,7 @@ func build(data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void
 	for j in n:
 		var type: int = data.cols[ObjDefs.Prop.TYPE][ids[j]]
 		var long: bool = ObjDefs.has_length(type)
-		var yaw: float = rng.randf() * TAU
-		var tilt: float = rng.randf_range(-0.25, 0.25)
-		var basis: Basis
-		if long: # lying on its side: local +Y becomes horizontal
-			basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, tilt) * Basis(Vector3.RIGHT, PI / 2.0) * Basis(Vector3.UP, rng.randf() * TAU)
-		else:
-			basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, tilt * 0.6 + (PI if rng.randf() < 0.5 else 0.0))
+		var basis: Basis = _rest_basis(long, rng)
 		rot[j] = basis
 
 		var axis := Vector2(basis.y.x, basis.y.z)
@@ -112,6 +110,7 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 	grid.remove(j)
 	var queue := PackedInt32Array()
 	var moved := PackedInt32Array()
+	moved_from_y.clear()
 	_queue_resting_on(removed, foot[j], removed.y, queue)
 	while not queue.is_empty():
 		var qi: int = 0 # always settle the lowest pending object first
@@ -130,6 +129,7 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 			grid.move(k, Vector3(pk.x, new_y, pk.z))
 			if not moved.has(k):
 				moved.append(k)
+				moved_from_y.append(pk.y)
 			_queue_resting_on(pk, foot[k], pk.y, queue)
 	return moved
 
@@ -139,6 +139,37 @@ func _queue_resting_on(center: Vector3, f: float, old_y: float, queue: PackedInt
 		var pm: Vector3 = grid.positions[m]
 		if pm.y > old_y and not queue.has(m) and Vector2(pm.x - center.x, pm.z - center.z).length() < (f + foot[m]) * SUPPORT_OVERLAP:
 			queue.append(m)
+
+
+## Orientation of an object lying on the heap: long ones on their side, nuts and washers flat.
+func _rest_basis(long: bool, rng: RandomNumberGenerator) -> Basis:
+	var yaw: float = rng.randf() * TAU
+	var tilt: float = rng.randf_range(-0.25, 0.25)
+	if long:
+		return Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, tilt) * Basis(Vector3.RIGHT, PI / 2.0) * Basis(Vector3.UP, rng.randf() * TAU)
+	return Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, tilt * 0.6 + (PI if rng.randf() < 0.5 else 0.0))
+
+
+## Where a tossed object will come to rest: a random spot in the ring around the pile, stacked on whatever is there.
+## The returned transform is (orientation, OBB center). Nothing changes until commit_landing().
+func plan_landing(j: int, cfg: DifficultyConfig, rng: RandomNumberGenerator) -> Transform3D:
+	var long: bool = lying[j] == 1
+	var spot: float = radius + rng.randf_range(cfg.toss_distance_min, cfg.toss_distance_max)
+	var ang: float = rng.randf() * TAU
+	var x: float = cos(ang) * spot
+	var z: float = sin(ang) * spot
+	var y: float = half_vert[j]
+	for m in grid.query(Vector3(x, 1.0, z), foot[j] + max_foot + 1.0):
+		var pm: Vector3 = grid.positions[m]
+		if Vector2(pm.x - x, pm.z - z).length() < (foot[j] + foot[m]) * SUPPORT_OVERLAP:
+			y = maxf(y, pm.y + half_vert[m] + half_vert[j])
+	return Transform3D(_rest_basis(long, rng), Vector3(x, y, z))
+
+
+func commit_landing(j: int, landing: Transform3D) -> void:
+	rot[j] = landing.basis
+	active[j] = 1
+	grid.add(j, landing.origin)
 
 
 func _step_offset(half_len: float, s: int, steps: int) -> float:

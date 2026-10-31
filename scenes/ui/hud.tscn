@@ -1,8 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/fps_counter.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/money_counter.gd" id="2"]
 
+
+[ext_resource type="Script" path="res://scripts/ui/round_hud.gd" id="5"]
 
 [sub_resource type="LabelSettings" id="1"]
 font_size = 22
@@ -42,3 +44,98 @@ grow_horizontal = 0
 label_settings = SubResource("1")
 horizontal_alignment = 2
 script = ExtResource("1")
+
+[node name="RoundHud" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5")
+
+[node name="Order" type="PanelContainer" parent="RoundHud"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -190.0
+offset_top = 14.0
+offset_right = 190.0
+offset_bottom = 150.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="RoundHud/Order"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="RoundHud/Order/Margin"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="RoundHud/Order/Margin/VBox"]
+layout_mode = 2
+text = "ORDER"
+label_settings = SubResource("3")
+horizontal_alignment = 1
+
+[node name="Lines" type="Label" parent="RoundHud/Order/Margin/VBox"]
+layout_mode = 2
+text = "-"
+label_settings = SubResource("1")
+horizontal_alignment = 1
+
+[node name="Clock" type="Label" parent="RoundHud/Order/Margin/VBox"]
+layout_mode = 2
+text = "0:00.0"
+label_settings = SubResource("1")
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="RoundHud"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = 60.0
+offset_right = 300.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+label_settings = SubResource("3")
+horizontal_alignment = 1
+
+[node name="Result" type="Label" parent="RoundHud"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -140.0
+offset_right = 400.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+label_settings = SubResource("2")
+horizontal_alignment = 1
+
+[node name="Help" type="Label" parent="RoundHud"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -44.0
+offset_right = 900.0
+offset_bottom = -14.0
+grow_vertical = 0
+text = "LMB pick up   RMB toss   E submit   C crouch   Q lean in   1-4 new round"
+label_settings = SubResource("1")
