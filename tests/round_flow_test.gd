@@ -53,7 +53,9 @@ func _ready() -> void:
 		var got: int = pile.pick_ray(origin, dir, 4.0)
 		if brute >= 0:
 			hits += 1
-		if got != brute:
+		# Equal hit distance is a tie (the ray origin can sit inside two overlapping boxes at t = 0), not a miss.
+		var same_hit: bool = got == brute or (got >= 0 and brute >= 0 and absf(pile._ray_obb(got, pile.to_local(origin), dir) - best_t) < 1e-5)
+		if not same_hit:
 			_fail("pick_ray gave %d, brute force %d" % [got, brute])
 		else:
 			exact += 1

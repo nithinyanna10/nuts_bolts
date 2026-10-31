@@ -8,7 +8,7 @@ Rules honoured: no design/number/control changes, no push, no force ops. Design 
 - [x] 2. Medium vs Expert average FPS
 - [x] 3. Windows export preset + clean export
 - [x] 4. Soak test (50 random rounds)
-- [ ] 5. Fix soak-test bugs
+- [x] 5. Fix soak-test bugs
 
 ## Log
 (newest last)
@@ -109,12 +109,36 @@ no wrong-submit penalty, tossed object not restored, double round start allowed;
 Input is driven through the controller's own methods (`_set_hover`, `_pick`, `_submit`, `_toss_held`, `_quick_toss`), not key
 events, because headless Godot cannot capture the mouse. The real key/mouse path was exercised earlier with a windowed script
 (hover, click, E) and is not part of the automated soak.
-Note: at this commit the soak FAILS on floating-after-settle; that is bug 1 below, fixed in the next commit.
+Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle; that is bug 1 below, fixed in the next commit.
+
+### 5. What the soak test found, and what I did
+1. REAL BUG, fixed: objects hovered after the object under them was removed. Settle decided "resting on" by center-to-center
+   distance, so a stick resting on the END of a removed stick was never queued to drop. Soak failed in nearly every round
+   (1-7 floating objects after settle). `PileLayout` now uses one rule everywhere (queueing, lowering, and where tossed objects
+   land): two objects touch if their horizontal axis segments are closer than the sum of their radii. After the fix: 0
+   failures in 150 soak rounds (3 seeds x 50), and the pile layout test still passes. Pile sizes/shapes are unchanged.
+2. Test bug (mine), fixed: the soak dug to the target while a quick-tossed target was still in the air -> now waits for
+   flights to land first.
+3. Test bug, fixed: ~1 in 26 flow-test runs failed with "pick_ray gave X, brute force Y". Not a picker bug: the random ray
+   origin sat inside two overlapping boxes (both hit at t = 0.000), so two answers are equally valid. Flow test and a new
+   `tests/picker_stress_test.tscn` (end-on, grazing and random rays, all difficulties) now compare hit distance. 0 mismatches.
+   I first suspected the ray march stopped too early; the stress test did not support that, so I did not change the picker.
+4. KNOWN LIMITATION, not fixed (needs your call): right after a pile is built, 3-9% of objects rest on nothing by the strict
+   plan-view rule (worst: Expert 8-9%, Hard 7-8%, Easy/Medium 3-5%; typical gap 6-10 cm, worst seen 33 cm). Cause: the heap
+   placement rests each object between the highest and the average support under it, so it can end up embedded beside a
+   higher neighbour with nothing touching beneath. Dropping those objects to their supports would visibly lower and compress
+   the piles (a pile-size change), so I left it. The soak test guards it (fails above 15%) and removal/settle never makes it worse.
 
 ## Blocked / skipped
 
 ## Questions for you
+- Pile placement (see 5.4): OK to let objects that rest on nothing after build drop to their supports? It tidies the look but
+  makes piles a bit lower/denser, which touches "pile sizes".
 - Windows presentation floor is unmeasured (no Windows machine here). Worth a 30 s run of
   `tests/frame_profile.tscn` and `tests/fps_benchmark.tscn` on the target machine.
 
 ## Ideas (not implemented, design-related)
+- Shop/magnet are disabled but still shipped: `shop_terminal.tscn`, `shop_menu.tscn`, `magnet_mesh_factory.gd` and the `open_shop`
+  input action (B) are in the Windows build though nothing instantiates them. Fine for now; strip them from the export filter
+  if you want a smaller build.
+- Round key presses during the 5-20 loading frames are dropped by design; queueing the last press would feel nicer.

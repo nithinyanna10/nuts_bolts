@@ -6,7 +6,8 @@ extends RefCounted
 
 const CELL: float = 0.025 ## height field resolution (must be finer than the thinnest object)
 const PACK: float = 0.85 ## how tightly lying objects nest vertically
-const SUPPORT_OVERLAP: float = 0.8 ## fraction of summed footprints that counts as "resting on"
+const TOUCH_MARGIN: float = 0.01 ## plan-view slack when deciding that two objects touch
+const SUPPORT_GAP: float = 0.02 ## an object counts as resting on another if it sits no more than this above its top
 const DROP_TRIES: int = 8 ## candidate spots tried before settling for the lowest one
 
 var ids := PackedInt32Array()
@@ -20,6 +21,8 @@ var lying := PackedByteArray() ## 1 for screws and bolts (long axis horizontal w
 var grid := SpatialGrid.new() ## owns the OBB centers
 var radius: float = 0.0
 var max_foot: float = 0.0
+var max_half_axial: float = 0.0
+var max_radius: float = 0.0
 var moved_from_y := PackedFloat32Array() ## aligned with the last remove_and_settle() result: y before settling
 
 
@@ -47,6 +50,8 @@ func build(data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void
 		foot[j] = b.y * 0.5 + b.x if long else b.x
 		volume += 8.0 * b.x * b.x * b.y if long else 2.0 * PI * b.x * b.x * b.y
 		max_foot = maxf(max_foot, foot[j])
+		max_half_axial = maxf(max_half_axial, b.y)
+		max_radius = maxf(max_radius, b.x)
 	# A cone of slope s and radius R holds PI/3 * s * R^3; only pile_packing of that is object.
 	radius = pow(volume / (PI / 3.0 * cfg.pile_slope * cfg.pile_packing), 1.0 / 3.0) * cfg.pile_spread
 
@@ -104,6 +109,7 @@ func origin_of(j: int, center: Vector3) -> Vector3:
 
 
 ## Removes object j; whatever rested on it (directly or through a chain) drops. Returns the moved local indices.
+## "Resting on" is decided in plan view by the objects' axis segments (a stick resting on another stick's end counts).
 func remove_and_settle(j: int) -> PackedInt32Array:
 	active[j] = 0
 	var removed: Vector3 = grid.positions[j]
@@ -111,7 +117,7 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 	var queue := PackedInt32Array()
 	var moved := PackedInt32Array()
 	moved_from_y.clear()
-	_queue_resting_on(removed, foot[j], removed.y, queue)
+	_queue_resting_on(j, removed, queue)
 	while not queue.is_empty():
 		var qi: int = 0 # always settle the lowest pending object first
 		for q in queue.size():
@@ -121,24 +127,52 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 		queue.remove_at(qi)
 		var pk: Vector3 = grid.positions[k]
 		var new_y: float = half_vert[k]
-		for m in grid.query(pk, foot[k] + max_foot):
+		for m in grid.query(pk, _reach(k)):
 			var pm: Vector3 = grid.positions[m]
-			if m != k and pm.y < pk.y and Vector2(pm.x - pk.x, pm.z - pk.z).length() < (foot[k] + foot[m]) * SUPPORT_OVERLAP:
+			if m != k and pm.y < pk.y and _touching(pk, rot[k], half[k], pm, rot[m], half[m]):
 				new_y = maxf(new_y, pm.y + half_vert[m] + half_vert[k])
 		if new_y < pk.y - 0.003:
 			grid.move(k, Vector3(pk.x, new_y, pk.z))
 			if not moved.has(k):
 				moved.append(k)
 				moved_from_y.append(pk.y)
-			_queue_resting_on(pk, foot[k], pk.y, queue)
+			_queue_resting_on(k, pk, queue)
 	return moved
 
 
-func _queue_resting_on(center: Vector3, f: float, old_y: float, queue: PackedInt32Array) -> void:
-	for m in grid.query(center, f + max_foot):
+## Queues the objects that sat on object j when j was at old_pos.
+func _queue_resting_on(j: int, old_pos: Vector3, queue: PackedInt32Array) -> void:
+	var top: float = old_pos.y + half_vert[j]
+	for m in grid.query(old_pos, _reach(j)):
 		var pm: Vector3 = grid.positions[m]
-		if pm.y > old_y and not queue.has(m) and Vector2(pm.x - center.x, pm.z - center.z).length() < (f + foot[m]) * SUPPORT_OVERLAP:
+		if m != j and pm.y > old_pos.y and pm.y - half_vert[m] - top <= SUPPORT_GAP and not queue.has(m) \
+				and _touching(old_pos, rot[j], half[j], pm, rot[m], half[m]):
 			queue.append(m)
+
+
+## Search radius that catches every object whose axis segment could touch object k's.
+func _reach(k: int) -> float:
+	return half[k].y + max_half_axial + half[k].x + max_radius + 0.05
+
+
+## True if two objects overlap in plan view: their horizontal axis segments are closer than the sum of their radii.
+func _touching(pa: Vector3, ra: Basis, ha: Vector3, pb: Vector3, rb: Basis, hb: Vector3) -> bool:
+	var ca := Vector2(pa.x, pa.z)
+	var cb := Vector2(pb.x, pb.z)
+	var aa := Vector2(ra.y.x, ra.y.z) * ha.y
+	var ab := Vector2(rb.y.x, rb.y.z) * hb.y
+	return _segment_distance(ca - aa, ca + aa, cb - ab, cb + ab) < ha.x + hb.x + TOUCH_MARGIN
+
+
+static func _segment_distance(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) -> float:
+	if Geometry2D.segment_intersects_segment(a0, a1, b0, b1) != null:
+		return 0.0
+	var best: float = INF
+	for p: Vector2 in [a0, a1]:
+		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, b0, b1)))
+	for p: Vector2 in [b0, b1]:
+		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, a0, a1)))
+	return best
 
 
 ## Orientation of an object lying on the heap: long ones on their side, nuts and washers flat.
@@ -158,12 +192,12 @@ func plan_landing(j: int, cfg: DifficultyConfig, rng: RandomNumberGenerator) -> 
 	var ang: float = rng.randf() * TAU
 	var x: float = cos(ang) * spot
 	var z: float = sin(ang) * spot
+	var basis: Basis = _rest_basis(long, rng)
 	var y: float = half_vert[j]
-	for m in grid.query(Vector3(x, 1.0, z), foot[j] + max_foot + 1.0):
-		var pm: Vector3 = grid.positions[m]
-		if Vector2(pm.x - x, pm.z - z).length() < (foot[j] + foot[m]) * SUPPORT_OVERLAP:
-			y = maxf(y, pm.y + half_vert[m] + half_vert[j])
-	return Transform3D(_rest_basis(long, rng), Vector3(x, y, z))
+	for m in grid.query(Vector3(x, 1.0, z), _reach(j) + 1.0):
+		if _touching(Vector3(x, 0.0, z), basis, half[j], grid.positions[m], rot[m], half[m]):
+			y = maxf(y, grid.positions[m].y + half_vert[m] + half_vert[j])
+	return Transform3D(basis, Vector3(x, y, z))
 
 
 func commit_landing(j: int, landing: Transform3D) -> void:
