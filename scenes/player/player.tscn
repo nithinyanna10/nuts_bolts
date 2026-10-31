@@ -1,7 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/collection/hand_collector.gd" id="2"]
+
+[ext_resource type="Script" path="res://scripts/upgrades/magnet_hand.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/collection/flying_screw_pool.gd" id="4"]
 
 [sub_resource type="CapsuleShape3D" id="1"]
 radius = 0.4
@@ -23,3 +26,10 @@ far = 120.0
 
 [node name="HandCollector" type="Node" parent="Head/Camera3D"]
 script = ExtResource("2")
+
+[node name="MagnetHand" type="Node3D" parent="Head/Camera3D"]
+script = ExtResource("3")
+
+[node name="FlyingScrewPool" type="Node3D" parent="Head/Camera3D/MagnetHand"]
+top_level = true
+script = ExtResource("4")

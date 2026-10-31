@@ -27,6 +27,13 @@ func remove(id: int) -> void:
 
 func query(center: Vector3, radius: float) -> PackedInt32Array:
 	var out := PackedInt32Array()
+	out.resize(query_into(center, radius, out))
+	return out
+
+
+## Writes matching ids into out (grown if needed, never shrunk) and returns how many.
+func query_into(center: Vector3, radius: float, out: PackedInt32Array) -> int:
+	var count: int = 0
 	var r2: float = radius * radius
 	var lo: Vector3i = _key(center - Vector3.ONE * radius)
 	var hi: Vector3i = _key(center + Vector3.ONE * radius)
@@ -35,8 +42,11 @@ func query(center: Vector3, radius: float) -> PackedInt32Array:
 			for z in range(lo.z, hi.z + 1):
 				for id: int in _cells.get(Vector3i(x, y, z), EMPTY):
 					if _positions[id].distance_squared_to(center) <= r2:
-						out.append(id)
-	return out
+						if count == out.size():
+							out.resize(maxi(count * 2, 64))
+						out[count] = id
+						count += 1
+	return count
 
 
 ## Id of the closest item within radius, or -1.

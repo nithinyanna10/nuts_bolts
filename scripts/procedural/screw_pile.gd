@@ -47,6 +47,7 @@ var _active_count: int = 0
 
 
 func _ready() -> void:
+	add_to_group("screw_pile")
 	var rng := RandomNumberGenerator.new()
 	if rng_seed != 0:
 		rng.seed = rng_seed
@@ -147,6 +148,19 @@ func get_screw_world_transform(index: int) -> Transform3D:
 
 func set_screw_world_transform(index: int, xform: Transform3D) -> void:
 	_multimeshes[_types[index]].set_instance_transform(_slots[index], global_transform.affine_inverse() * xform)
+
+
+func get_screw_world_position(index: int) -> Vector3:
+	return global_transform * _positions[index]
+
+
+func get_screw_color(index: int) -> Color:
+	return _multimeshes[_types[index]].get_instance_color(_slots[index])
+
+
+## Fills out with active screw ids within radius (see SpatialGrid.query_into) and returns the count.
+func screws_in_radius_into(world_point: Vector3, radius: float, out: PackedInt32Array) -> int:
+	return _grid.query_into(to_local(world_point), radius, out)
 
 
 ## Closest active screw to a world point within radius, or -1.

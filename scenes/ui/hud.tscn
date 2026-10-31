@@ -1,8 +1,10 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/fps_counter.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/money_counter.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/ui/streak_display.gd" id="3"]
+
+[ext_resource type="Script" path="res://scripts/ui/magnet_meter.gd" id="4"]
 
 [sub_resource type="LabelSettings" id="1"]
 font_size = 22
@@ -37,6 +39,22 @@ offset_right = 320.0
 offset_bottom = 116.0
 label_settings = SubResource("3")
 script = ExtResource("3")
+
+[node name="MagnetMeter" type="Label" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 24.0
+offset_right = 120.0
+offset_bottom = 64.0
+grow_horizontal = 2
+grow_vertical = 2
+label_settings = SubResource("3")
+horizontal_alignment = 1
+script = ExtResource("4")
 
 [node name="Fps" type="Label" parent="."]
 anchors_preset = 1
