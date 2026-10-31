@@ -61,12 +61,23 @@ by design. Fixes in 068daa7.
   refresh: those rows were frames pinned to vsync (median frame 8.3-8.5 ms = one refresh interval), not a measure of how
   expensive the scene is. The benchmark relied on the `--disable-vsync` CLI flag, which on this Mac did not hold for the
   whole process, so some segments ran capped and others uncapped (a blank window flips the same way: 119 or 261-298 FPS).
-- Proof: with vsync disabled in-process (DisplayServer.window_set_vsync_mode) and the order shuffled three ways, Medium
+- Evidence (consistent with, not proof of, the cause): with vsync disabled in-process (DisplayServer.window_set_vsync_mode) and the order shuffled three ways, Medium
   averaged 252-315 FPS and Expert 238-290 across all runs. Medium is never the slow one; Expert is slightly slower, as expected
   (more draws: ~200 vs ~125).
+- Caveats the second reviewer raised: (a) I never showed WHEN the CLI flag stopped holding; macOS compositor/ProMotion pacing is
+  an equally plausible cause of the capped segments; (b) Easy and Medium score the same (~295-307 FPS, median ~2.5 ms), so at
+  this scale the benchmark is dominated by fixed per-frame overhead and the differences between difficulties are mostly
+  noise; (c) rounds were unseeded, and one Hard "close" row swung 167 -> 295 FPS between runs, so run-to-run noise is much
+  larger than the +-10 FPS I first claimed.
 - Fix (methodology): tests/fps_benchmark.gd now disables vsync in-process by default (`vsync=1` to opt in), accepts
   `order=`, and prints the median frame time and a [REFRESH-CAPPED] flag on any segment whose median sits on a refresh
-  interval, so a capped row can no longer be mistaken for a throughput number.
+  interval (the check covers 30-240 Hz and the screen's real refresh rate, and needs a tight distribution), so a capped row
+  can no longer be mistaken for a throughput number. `seed=N` makes the rounds identical between runs.
+
+Review 2 (of 068daa7 + 6e871f9): no blockers/bugs. RISKS: item-2 "proof" overstated -> reworded with the reviewer's caveats;
+refresh-cap flag only knew 60/120 Hz -> now 30-240 Hz + the screen's real rate. NITs: bad-index test thin -> now covers 99, -1,
+too few anchors and checks the running round is undisturbed; benchmark unseeded -> `seed=`. Fixed in the commit after 6e871f9
+(reviewed together with item 3).
 
 ## Blocked / skipped
 

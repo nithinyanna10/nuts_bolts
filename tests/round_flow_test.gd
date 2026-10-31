@@ -84,9 +84,20 @@ func _ready() -> void:
 	if culled_mismatch > 0:
 		_fail("bounding reject changed pick results")
 	# Loading guards: bad requests must not wedge the round manager.
-	rm.start_round(99)
-	if rm._loading:
-		_fail("a bad difficulty index left the round manager loading")
+	var piles_before: int = rm.piles.size()
+	var data_before: RoundData = rm.data
+	for bad in [99, -1]:
+		rm.start_round(bad)
+		if rm._loading:
+			_fail("difficulty %d left the round manager loading" % bad)
+	if rm.data != data_before or rm.piles.size() != piles_before or not rm._running:
+		_fail("a rejected start_round disturbed the running round")
+	var saved_anchors: Array[Vector3] = rm.pile_anchors.duplicate()
+	rm.pile_anchors = []
+	rm.start_round(0)
+	rm.pile_anchors = saved_anchors
+	if rm._loading or rm.data != data_before:
+		_fail("too few pile anchors was not rejected cleanly")
 
 	# 2. Wrong submit: pick a non-target, submit it, expect penalty message and the object back in the pile.
 	player.global_position = pile.global_position + Vector3(0, 0.1, 2.0)
