@@ -1,13 +1,42 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/fps_counter.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/money_counter.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/ui/streak_display.gd" id="3"]
 
 [sub_resource type="LabelSettings" id="1"]
 font_size = 22
 outline_size = 6
 outline_color = Color(0, 0, 0, 0.8)
 
+[sub_resource type="LabelSettings" id="2"]
+font_size = 44
+outline_size = 10
+outline_color = Color(0, 0, 0, 0.8)
+
+[sub_resource type="LabelSettings" id="3"]
+font_size = 28
+outline_size = 8
+outline_color = Color(0, 0, 0, 0.8)
+
 [node name="Hud" type="CanvasLayer"]
+
+[node name="Money" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 16.0
+offset_right = 320.0
+offset_bottom = 72.0
+text = "$0"
+label_settings = SubResource("2")
+script = ExtResource("2")
+
+[node name="Streak" type="Label" parent="."]
+offset_left = 26.0
+offset_top = 76.0
+offset_right = 320.0
+offset_bottom = 116.0
+label_settings = SubResource("3")
+script = ExtResource("3")
 
 [node name="Fps" type="Label" parent="."]
 anchors_preset = 1

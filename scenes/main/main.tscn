@@ -1,10 +1,13 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/warehouse/warehouse.tscn" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/crosshair.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/screws/screw_pile.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5"]
+
+[ext_resource type="Script" path="res://scripts/collection/streak_tracker.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/economy/floating_text_spawner.gd" id="7"]
 
 [node name="Main" type="Node3D"]
 
@@ -31,3 +34,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 24)
 [node name="Crosshair" parent="." instance=ExtResource("3")]
 
 [node name="Hud" parent="." instance=ExtResource("5")]
+
+[node name="StreakTracker" type="Node" parent="."]
+script = ExtResource("6")
+
+[node name="FloatingTextSpawner" type="Node" parent="."]
+script = ExtResource("7")
