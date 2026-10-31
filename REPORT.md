@@ -5,7 +5,7 @@ Rules honoured: no design/number/control changes, no push, no force ops. Design 
 
 ## Status
 - [x] 1. 1% lows (3faec7c, review fixes in the next commit)
-- [ ] 2. Medium vs Expert average FPS
+- [x] 2. Medium vs Expert average FPS
 - [ ] 3. Windows export preset + clean export
 - [ ] 4. Soak test (50 random rounds)
 - [ ] 5. Fix soak-test bugs
@@ -49,7 +49,24 @@ run-to-run noise, which on this machine is about +-10 FPS (blank window: 53-66).
 empty-window floor.
 
 ## Reviewer findings
-(none yet)
+Review 1 (of 3faec7c): no blockers/bugs. RISKS: (1) build-frame numbers did not reproduce -> corrected above;
+(2) `_loading` could stick if a config failed to load -> now validated before the flag is set (and tested with a bad index);
+(3) no test for the bounding reject / loading flow -> added to tests/round_flow_test.gd. NITs: overlay swallowed the
+mouse-recapture click -> mouse_filter ignore; report said "hash pending" -> fixed; sphere margins are literals (left,
+same as the existing `reach` literals, not a feel tunable); a round key pressed during loading (~5-20 frames) is dropped
+by design. Fixes in 068daa7.
+
+### 2. Why Medium averaged lower than Expert: measurement artifact, not scene cost
+- In the first benchmark, Medium rows sat at 113-117 FPS while Hard/Expert showed 205-297. 117 is the 120 Hz display
+  refresh: those rows were frames pinned to vsync (median frame 8.3-8.5 ms = one refresh interval), not a measure of how
+  expensive the scene is. The benchmark relied on the `--disable-vsync` CLI flag, which on this Mac did not hold for the
+  whole process, so some segments ran capped and others uncapped (a blank window flips the same way: 119 or 261-298 FPS).
+- Proof: with vsync disabled in-process (DisplayServer.window_set_vsync_mode) and the order shuffled three ways, Medium
+  averaged 252-315 FPS and Expert 238-290 across all runs. Medium is never the slow one; Expert is slightly slower, as expected
+  (more draws: ~200 vs ~125).
+- Fix (methodology): tests/fps_benchmark.gd now disables vsync in-process by default (`vsync=1` to opt in), accepts
+  `order=`, and prints the median frame time and a [REFRESH-CAPPED] flag on any segment whose median sits on a refresh
+  interval, so a capped row can no longer be mistaken for a throughput number.
 
 ## Blocked / skipped
 
