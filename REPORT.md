@@ -4,7 +4,7 @@ Autonomous work list (see conversation): 1) 1% lows, 2) Medium vs Expert FPS, 3)
 Rules honoured: no design/number/control changes, no push, no force ops. Design ideas go under "Ideas" below.
 
 ## Status
-- [x] 1. 1% lows (commit pending hash below)
+- [x] 1. 1% lows (3faec7c, review fixes in the next commit)
 - [ ] 2. Medium vs Expert average FPS
 - [ ] 3. Windows export preset + clean export
 - [ ] 4. Soak test (50 random rounds)
@@ -30,7 +30,9 @@ Findings (1920x1080, Apple M4 Pro, windowed, vsync off in-process):
 
 Real stalls found and fixed:
 - Round build blocked ONE frame: Medium 31 ms, Hard 118 ms, Expert 495 ms. Now built behind a "Preparing your order..."
-  overlay, one pile per frame: worst frame Medium 22 ms, Hard 37 ms, Expert 88 ms (all behind the overlay).
+  overlay, one pile per frame. Worst loading frame over 3 runs (mine + the reviewer's): Medium 22-45 ms, Hard 37-59 ms,
+  Expert 62-88 ms. (I first reported 22/37/88 from a single run; the reviewer's rerun did not reproduce Medium/Hard,
+  so the ranges above are the honest ones.) All of it is behind the overlay.
 - Picker marched the ray through every pile every frame; added a bounding-sphere reject (small gain, 0.03-0.1 ms/frame).
 
 Before / after 1% low FPS (same harness, play scenario, vsync off):

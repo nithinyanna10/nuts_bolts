@@ -39,6 +39,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func start_round(difficulty_index: int) -> void:
 	if _loading:
 		return
+	# Validate first: once _loading is set only the end of this coroutine clears it.
+	if difficulty_index < 0 or difficulty_index >= difficulty_files.size():
+		push_error("RoundManager: no difficulty %d" % difficulty_index)
+		return
+	var cfg := load(difficulty_files[difficulty_index]) as DifficultyConfig
+	if cfg == null or cfg.pile_count > pile_anchors.size():
+		push_error("RoundManager: bad difficulty config or too few pile anchors for %s" % difficulty_files[difficulty_index])
+		return
 	_loading = true
 	_running = false
 	EventBus.loading_changed.emit(true) # listeners drop references to the old piles
@@ -46,7 +54,7 @@ func start_round(difficulty_index: int) -> void:
 	for pile in piles:
 		pile.queue_free()
 	piles.clear()
-	_config = load(difficulty_files[difficulty_index])
+	_config = cfg
 	data = ChallengeGenerator.new(_config).generate(_rng)
 	await get_tree().process_frame
 	for k in _config.pile_count:

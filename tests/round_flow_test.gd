@@ -61,6 +61,33 @@ func _ready() -> void:
 	if hits < 100:
 		_fail("test rays barely hit anything")
 
+	# 1b. Bounding-sphere reject: after many tosses (objects stacked in the ring beyond the pile), rays must give
+	# exactly the same answer with the reject disabled.
+	for i in 300:
+		var tj: int = rng.randi() % pile.object_count()
+		if pile.is_active(tj):
+			pile.remove_object(tj)
+			pile.restore_object(tj, pile.plan_landing(tj, rng))
+	var culled_mismatch: int = 0
+	var saved_radius: float = pile._bound_radius
+	for r in 300:
+		var center: Vector3 = pile.global_position + Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(0.0, 0.8), rng.randf_range(-1.0, 1.0)) * (pile.layout.radius + 1.5)
+		var origin: Vector3 = center + Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(0.8, 2.0), rng.randf_range(-1.0, 1.0))
+		var dir: Vector3 = (center - origin).normalized()
+		var with_reject: int = pile.pick_ray(origin, dir, 4.0)
+		pile._bound_radius = 1e9
+		var without: int = pile.pick_ray(origin, dir, 4.0)
+		pile._bound_radius = saved_radius
+		if with_reject != without:
+			culled_mismatch += 1
+	print("bounds reject: %d/300 rays differ from the unculled picker" % culled_mismatch)
+	if culled_mismatch > 0:
+		_fail("bounding reject changed pick results")
+	# Loading guards: bad requests must not wedge the round manager.
+	rm.start_round(99)
+	if rm._loading:
+		_fail("a bad difficulty index left the round manager loading")
+
 	# 2. Wrong submit: pick a non-target, submit it, expect penalty message and the object back in the pile.
 	player.global_position = pile.global_position + Vector3(0, 0.1, 2.0)
 	var wrong_j: int = (target_j + 1) % pile.object_count()
