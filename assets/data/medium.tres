@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="DifficultyConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/procedural/difficulty_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+display_name = "Medium"
+object_count = 600
+pile_count = 1
+spec_props = Array[int]([0, 1, 2, 3, 4])
+near_miss_ratio = 0.5
+target_cover_min = 1
+target_cover_max = 4
+base_payout = 50
+par_time = 120.0
+bonus_per_second = 0.6
+wrong_penalty_seconds = 7.0
+show_wrong_property = true
+inspect_tools = false
+pile_layers = 4.0
