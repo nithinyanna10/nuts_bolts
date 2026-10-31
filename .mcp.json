@@ -1,12 +1,8 @@
 {
   "mcpServers": {
     "godot": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@coding-solo/godot-mcp"
-      ],
+      "command": "node",
+      "args": ["/Users/nithinyanna/tools/godot-mcp/build/index.js"],
       "env": {
         "GODOT_PATH": "/Applications/Godot.app/Contents/MacOS/Godot"
       }
