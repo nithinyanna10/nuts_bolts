@@ -8,16 +8,10 @@ extends Node
 ## settle, exactly one match per round, payout/penalty maths, no leaked nodes.
 
 const FloatingCheck = preload("res://tests/floating_check.gd")
+const ErrorCatcher = preload("res://tests/error_catcher.gd")
 
 ## A freshly built pile must have nothing resting on nothing (PileLayout.settle_all runs at the end of build()).
 const MAX_UNSUPPORTED_SHARE: float = 0.0
-
-class ErrorCatcher extends Logger:
-	var errors: Array[String] = []
-
-	func _log_error(function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, _error_type: int, _backtraces: Array[ScriptBacktrace]) -> void:
-		errors.append("%s:%d %s %s (in %s)" % [file, line, code, rationale, function])
-
 
 var _rng := RandomNumberGenerator.new()
 var _failures: Array[String] = []
