@@ -4,6 +4,8 @@ extends Node
 ## (mouse rotates it); E submits it; right click tosses it. Toss without holding = quick dig.
 ## Tossed objects fly to a spot in the ring around the pile and stay there, so nothing leaks which one is the target.
 
+const LandingBlend = preload("res://scripts/collection/landing_blend.gd")
+
 enum State { IDLE, PICKING, INSPECT, FOUND }
 
 class Flight:
@@ -40,6 +42,7 @@ class Flight:
 @export var toss_arc: float = 0.7
 @export var toss_spin: float = 9.0
 @export var toss_pool_size: int = 8
+@export_range(0.0, 0.95) var toss_settle_start: float = 0.6 ## flight fraction where the drawn landing height starts easing to the true rest height
 
 @export_group("Look")
 @export var hover_highlight: float = 0.85
@@ -364,7 +367,9 @@ func _update_flights(delta: float) -> void:
 
 
 func _apply_flight(flight: Flight, t: float) -> void:
-	var land_center: Vector3 = flight.pile.global_transform * flight.landing.origin
+	var o: Vector3 = flight.landing.origin
+	var rest_y: float = flight.pile.layout.rest_height(flight.j, flight.landing.basis, o.x, o.z) if t > toss_settle_start else o.y
+	var land_center: Vector3 = flight.pile.global_transform * Vector3(o.x, LandingBlend.y(o.y, rest_y, t, toss_settle_start), o.z)
 	var center: Vector3 = flight.from_center.lerp(land_center, t) + Vector3.UP * sin(t * PI) * toss_arc
 	var q: Quaternion = flight.from_q.slerp(flight.landing.basis.get_rotation_quaternion(), t)
 	var rotation: Basis = Basis(flight.spin_axis, sin(t * PI) * toss_spin) * Basis(q)

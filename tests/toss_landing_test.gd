@@ -4,6 +4,7 @@ extends SceneTree
 ## so commit_landing must re-check the support height.
 
 const FloatingCheck = preload("res://tests/floating_check.gd")
+const LandingBlend = preload("res://scripts/collection/landing_blend.gd")
 var _failures: int = 0
 
 
@@ -11,6 +12,7 @@ func _init() -> void:
 	var cfg: DifficultyConfig = load("res://assets/data/easy.tres")
 	_supporter_picked_up_mid_flight(cfg)
 	_two_flights_to_the_same_spot(cfg)
+	_blend_ends_exactly_at_rest()
 	print("TOTAL FAILURES: %d" % _failures)
 	quit(1 if _failures > 0 else 0)
 
@@ -61,6 +63,32 @@ func _two_flights_to_the_same_spot(cfg: DifficultyConfig) -> void:
 	var gap: float = layout.grid.positions[1].y - (layout.grid.positions[0].y + layout.half_vert[0] + layout.half_vert[1])
 	if gap < -0.002:
 		_fail("two flights to one spot overlap: B sits %.3f m inside A" % -gap)
+
+
+## The drawn landing height eases from the planned height to the recomputed rest height and ends exactly on it, so
+## the object does not snap when it is committed.
+func _blend_ends_exactly_at_rest() -> void:
+	var planned: float = 1.0
+	var rest: float = 0.4
+	var start: float = 0.6
+	if not is_equal_approx(LandingBlend.y(planned, rest, 0.0, start), planned):
+		_fail("blend: not at the planned height at t=0")
+	if not is_equal_approx(LandingBlend.y(planned, rest, start, start), planned):
+		_fail("blend: moved before the blend start")
+	if not is_equal_approx(LandingBlend.y(planned, rest, 1.0, start), rest):
+		_fail("blend: does not end exactly on the rest height")
+	if not is_equal_approx(LandingBlend.y(planned, rest, 0.5, 1.0), planned) or not is_equal_approx(LandingBlend.y(planned, rest, 1.0, 1.0), rest):
+		_fail("blend: start=1.0 must hold the planned height until the very end")
+	var prev: float = planned
+	for i in 101: # eases monotonically toward rest, never overshooting it
+		var y: float = LandingBlend.y(planned, rest, i / 100.0, start)
+		if y > prev + 0.000001 or y < rest - 0.000001:
+			_fail("blend: not monotone / overshoots at t=%.2f (y=%.4f)" % [i / 100.0, y])
+			break
+		prev = y
+	var rising: float = LandingBlend.y(0.4, 1.0, 0.8, start) # another object landed there first: rises, no overshoot
+	if rising < 0.4 or rising > 1.0:
+		_fail("blend: rising case out of range (%.3f)" % rising)
 
 
 func _fail(msg: String) -> void:
