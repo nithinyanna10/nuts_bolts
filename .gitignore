@@ -10,3 +10,6 @@ export_credentials.cfg
 
 # Exported builds
 build/
+
+# Machine-specific tool config
+.mcp.json
