@@ -34,3 +34,8 @@ Stylized low-poly 3D first-person game. Godot 4, GDScript, Jolt physics, Forward
 - `scenes/{main,player,warehouse,screws,equipment,ui}`
 - `scripts/{player,inventory,collection,economy,upgrades,procedural,ui}`
 - `assets/{audio,materials,meshes}`
+
+## workflow
+- Use the superpowers workflow for every task: plan first, tests first, subagent review before commit.
+- Game design in this file is locked. Don't brainstorm or revisit it unless I explicitly ask for brainstorming. Ask questions only when a task is genuinely ambiguous.
+- Commits: plain short messages, never Co-Authored-By or any Claude/Anthropic attribution.
