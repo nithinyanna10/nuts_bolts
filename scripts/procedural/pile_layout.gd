@@ -215,17 +215,25 @@ func plan_landing(j: int, cfg: DifficultyConfig, rng: RandomNumberGenerator) -> 
 	var x: float = cos(ang) * spot
 	var z: float = sin(ang) * spot
 	var basis: Basis = _rest_basis(long, rng)
+	return Transform3D(basis, Vector3(x, _rest_height(j, basis, x, z), z))
+
+
+## The world may have changed during the flight (the supporter picked up, another object landed here first),
+## so the resting height is worked out again at x/z.
+func commit_landing(j: int, landing: Transform3D) -> void:
+	var o: Vector3 = landing.origin
+	rot[j] = landing.basis
+	active[j] = 1
+	grid.add(j, Vector3(o.x, _rest_height(j, landing.basis, o.x, o.z), o.z))
+
+
+## Height of object j's center when it comes to rest at x/z: on the floor or on the highest object under it.
+func _rest_height(j: int, basis: Basis, x: float, z: float) -> float:
 	var y: float = half_vert[j]
 	for m in grid.query_below(Vector3(x, 20.0, z), _reach(j), 20.0):
 		if _touching(Vector3(x, 0.0, z), basis, half[j], grid.positions[m], rot[m], half[m]):
 			y = maxf(y, grid.positions[m].y + half_vert[m] + half_vert[j])
-	return Transform3D(basis, Vector3(x, y, z))
-
-
-func commit_landing(j: int, landing: Transform3D) -> void:
-	rot[j] = landing.basis
-	active[j] = 1
-	grid.add(j, landing.origin)
+	return y
 
 
 func _step_offset(half_len: float, s: int, steps: int) -> float:
