@@ -44,8 +44,8 @@ func start_round(difficulty_index: int) -> void:
 		push_error("RoundManager: no difficulty %d" % difficulty_index)
 		return
 	var cfg := load(difficulty_files[difficulty_index]) as DifficultyConfig
-	if cfg == null or cfg.pile_count > pile_anchors.size():
-		push_error("RoundManager: bad difficulty config or too few pile anchors for %s" % difficulty_files[difficulty_index])
+	if cfg == null or cfg.pile_count > pile_anchors.size() or cfg.problem() != "":
+		push_error("RoundManager: bad difficulty config or too few pile anchors for %s%s" % [difficulty_files[difficulty_index], "" if cfg == null else " (%s)" % cfg.problem()])
 		return
 	_loading = true
 	_running = false

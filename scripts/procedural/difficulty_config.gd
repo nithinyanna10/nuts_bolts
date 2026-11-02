@@ -29,3 +29,14 @@ extends Resource
 @export var toss_distance_min: float = 0.3 ## tossed objects land this far beyond the pile edge...
 @export var toss_distance_max: float = 1.4 ## ...up to this far
 @export var grid_cell_size: float = 0.5
+
+
+## "" if the generator can build rounds from this config, else what is wrong with it.
+func problem() -> String:
+	if spec_props.is_empty():
+		return "spec_props is empty (nothing to order)"
+	if target_types.is_empty():
+		return "target_types is empty"
+	if object_count < 1 or pile_count < 1:
+		return "object_count and pile_count must be at least 1"
+	return ""

@@ -17,6 +17,7 @@ func _init() -> void:
 		elif arg.begins_with("only="):
 			only = arg.get_slice("=", 1)
 	_check_bands()
+	_check_config_validation()
 	for name in FILES:
 		if only != "" and only != name:
 			continue
@@ -32,6 +33,24 @@ func _fail(msg: String) -> void:
 	_failures += 1
 	if _failures <= 10:
 		printerr("FAIL: " + msg)
+
+
+## A config the generator cannot build from must be reported, not crash it (empty order -> modulo by zero).
+func _check_config_validation() -> void:
+	for name in FILES:
+		var good: DifficultyConfig = load("res://assets/data/%s.tres" % name)
+		if good.problem() != "":
+			_fail("%s: shipped config reported as bad: %s" % [name, good.problem()])
+	var bad_cases := {"no order properties": "spec_props", "no target types": "target_types", "no objects": "object_count", "no piles": "pile_count"}
+	for label: String in bad_cases:
+		var cfg := (load("res://assets/data/easy.tres") as DifficultyConfig).duplicate(true) as DifficultyConfig # deep: never touch the cached resource
+		var prop: String = bad_cases[label]
+		if cfg.get(prop) is Array:
+			(cfg.get(prop) as Array).clear()
+		else:
+			cfg.set(prop, 0)
+		if cfg.problem() == "":
+			_fail("config with %s was not reported" % label)
 
 
 func _check_bands() -> void:
