@@ -32,11 +32,28 @@ extends Resource
 
 
 ## "" if the generator can build rounds from this config, else what is wrong with it.
+## Every check here guards a crash the config fuzz test found (tests/config_fuzz_test.gd).
 func problem() -> String:
-	if spec_props.is_empty():
-		return "spec_props is empty (nothing to order)"
-	if target_types.is_empty():
-		return "target_types is empty"
 	if object_count < 1 or pile_count < 1:
 		return "object_count and pile_count must be at least 1"
+	if spec_props.is_empty():
+		return "spec_props is empty (nothing to order)"
+	for prop in spec_props:
+		if prop < 0 or prop >= ObjDefs.PROP_COUNT:
+			return "spec_props has %d, which is not an ObjDefs.Prop" % prop
+	if spec_props.has(ObjDefs.Prop.LENGTH_CLASS) and spec_props.has(ObjDefs.Prop.LENGTH_MM):
+		return "spec_props lists both LENGTH_CLASS and LENGTH_MM (the class jitter changes every length, so no object matches the exact one)"
+	if target_types.is_empty():
+		return "target_types is empty"
+	for type in target_types:
+		if not ObjDefs.TYPES.has(type):
+			return "target_types has %d, which is not an ObjDefs.Type" % type
+		# An order where nothing varies for this type leaves no object that differs from the target.
+		if not spec_props.any(func(prop: int) -> bool: return ObjDefs.values(type, prop).size() > 1):
+			return "no order property varies for target type %d" % type
+	if target_cover_min < 0 or target_cover_max < target_cover_min:
+		return "target_cover must satisfy 0 <= min <= max"
+	# shortcut: only "> 0" is checked; a tiny positive grid_cell_size or units_per_mm builds slowly but does finish.
+	if grid_cell_size <= 0.0 or units_per_mm <= 0.0 or pile_slope <= 0.0 or pile_packing <= 0.0 or pile_spread <= 0.0:
+		return "grid_cell_size, units_per_mm, pile_slope, pile_packing and pile_spread must be above 0 (0 hangs the pile build)"
 	return ""

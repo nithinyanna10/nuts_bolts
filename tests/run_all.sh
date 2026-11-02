@@ -16,6 +16,7 @@ run() { # name, then godot args
 run pile_layout -s tests/pile_layout_test.gd
 run toss_landing -s tests/toss_landing_test.gd
 run challenge_generator -s tests/challenge_generator_test.gd -- rounds=$GEN_ROUNDS
+run config_fuzz -s tests/config_fuzz_test.gd
 run zero_floating -s tests/zero_floating_test.gd -- rounds=$FLOOR_ROUNDS
 run round_flow tests/round_flow_test.tscn
 run picker_stress tests/picker_stress_test.tscn
