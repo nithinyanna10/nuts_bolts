@@ -9,9 +9,8 @@ extends Node
 
 const FloatingCheck = preload("res://tests/floating_check.gd")
 
-## Known limitation, not a regression guard against zero: the heap placement rule can leave a few objects embedded
-## beside a higher neighbour with nothing touching underneath (REPORT.md). Measured worst case is under 10%.
-const MAX_UNSUPPORTED_SHARE: float = 0.15
+## A freshly built pile must have nothing resting on nothing (PileLayout.settle_all runs at the end of build()).
+const MAX_UNSUPPORTED_SHARE: float = 0.0
 
 class ErrorCatcher extends Logger:
 	var errors: Array[String] = []

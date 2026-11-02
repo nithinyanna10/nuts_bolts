@@ -101,9 +101,9 @@ picks one and submits it wrong (penalty maths, message format per difficulty, mo
 reachable); picks the target and submits it (payout = base + time bonus, money delta, FOUND state, a second submit pays
 nothing); sometimes abandons the round while holding an object. It also attaches an engine Logger (any engine error fails
 the run), checks nothing is stuck (every wait has a timeout), and checks the node count does not grow.
-Floating objects: independent physical rule (an object must be on the floor or touch a lower object in plan view with <= 2 cm
-gap, using 2D axis-segment distance). The check is "no object that was supported when the pile was built is floating after
-settle".
+Floating objects: separately written physical rule in `tests/floating_check.gd` (same plan-view segment model as the layout, so a flaw in that model would not be caught) (an object must be on the floor or touch a lower object
+in plan view with <= 2 cm gap, using 2D axis-segment distance). The check is "no object is floating right after the pile is
+built, and none is floating after any settle".
 Mutation-checked (each makes the soak fail, unmutated passes): settle disabled, state not reset on new round, payout off by one,
 no wrong-submit penalty, tossed object not restored, double round start allowed; an injected push_error is caught by the Logger.
 Input is driven through the controller's own methods (`_set_hover`, `_pick`, `_submit`, `_toss_held`, `_quick_toss`), not key
@@ -123,12 +123,24 @@ Note: at the soak-test commit (648368e) the soak FAILS on floating-after-settle;
    origin sat inside two overlapping boxes (both hit at t = 0.000), so two answers are equally valid. Flow test and a new
    `tests/picker_stress_test.tscn` (end-on, grazing and random rays, all difficulties) now compare hit distance. 0 mismatches.
    I first suspected the ray march stopped too early; the stress test did not support that, so I did not change the picker.
-4. KNOWN LIMITATION, not fixed (needs your call): right after a pile is built, 3-9% of objects rest on nothing by the strict
-   plan-view rule (per-round worst over 50 rounds, 5 seeds: Easy 2.7-6%, Medium 4-5%, Hard 7-9%, Expert 8-9.4% (seeds 1-5, 11, 12, 21, 77 across author and reviewers); the gap sizes
-   "typically 6-10 cm, worst 33 cm" come from a throwaway script on one Hard seed and are not reproduced by any committed test). Cause: the heap
-   placement rests each object between the highest and the average support under it, so it can end up embedded beside a
-   higher neighbour with nothing touching beneath. Dropping those objects to their supports would visibly lower and compress
-   the piles (a pile-size change), so I left it. The soak test guards it (fails above 15%) and removal/settle never makes it worse.
+4. FIXED (was a known limitation): right after a pile was built, 3-9% of objects rested on nothing by the strict plan-view rule
+   (heap placement rests each object between the highest and the average support under it, so it could end up embedded beside a
+   higher neighbour with nothing touching beneath). `PileLayout.build()` now ends with one `settle_all()` pass (lowest object first,
+   same support rule as removal) inside the existing loading overlay. `tests/zero_floating_test.gd` builds every pile of 200 seeded
+   rounds per difficulty (Easy 200, Medium 200, Hard 600, Expert 1,000 = 2,000 piles) and asserts zero objects resting on nothing, that a second settle
+   moves nothing, nothing sinks below the floor, and the same seed gives the same pile. The soak limit went from 15% to 0.
+   Before -> after, averages over those 200 rounds per difficulty (height = highest object top, width = diameter of the circle
+   around all objects):
+   | | objects resting on nothing | avg height | avg width | avg `PileLayout.build` per pile |
+   |---|---|---|---|---|
+   | Easy | 538 -> 0 | 0.531 -> 0.531 m | 1.826 -> 1.826 m | 4.5 -> 7.6 ms |
+   | Medium | 3,416 -> 0 | 1.005 -> 1.005 m | 3.306 -> 3.306 m | 20.2 -> 45.8 ms |
+   | Hard | 23,709 -> 0 | 1.314 -> 1.314 m | 3.908 -> 3.908 m | 30.3 -> 72.3 ms |
+   | Expert | 113,142 -> 0 | 1.947 -> 1.947 m | 5.135 -> 5.135 m | 74.0 -> 209.3 ms |
+   Pile height and width did not change at 3 decimals: the dropped objects were embedded beside taller neighbours, so the
+   outline and the top of each pile stayed put. Cost: layout build time per pile (layout only, not the MultiMesh setup) is about 2-3x (Expert round: five piles, roughly
+   0.4 s -> 1.0 s of layout time on this machine), all behind the "Preparing your order..." overlay; `RoundManager` still builds one pile
+   per frame, so the overlay just stays up a little longer. The full test takes about 8 minutes (`-- rounds=20` for a quick run).
 
 ### Playtest note (you, after you came back)
 "Once I select a nut there is no option to put it back (only E submit)": right-click toss already worked (tested with real input
