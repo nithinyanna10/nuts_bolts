@@ -101,6 +101,7 @@ func build(data: RoundData, pile_index: int, rng: RandomNumberGenerator) -> void
 			_raise(heights, size, px + along.x * t, pz + along.y * t, half[j].x, yc + half_vert[j])
 		centers[j] = Vector3(px, yc, pz)
 	grid.setup(cfg.grid_cell_size, centers)
+	settle_all()
 
 
 ## World-space-free origin of object j (its mesh origin, the head's bearing plane center).
@@ -126,18 +127,39 @@ func remove_and_settle(j: int) -> PackedInt32Array:
 		var k: int = queue[qi]
 		queue.remove_at(qi)
 		var pk: Vector3 = grid.positions[k]
-		var new_y: float = half_vert[k]
-		for m in grid.query_below(pk, _reach(k), pk.y + 0.1): # supporters can be far below, not just nearby
-			var pm: Vector3 = grid.positions[m]
-			if m != k and pm.y < pk.y and _touching(pk, rot[k], half[k], pm, rot[m], half[m]):
-				new_y = maxf(new_y, pm.y + half_vert[m] + half_vert[k])
-		if new_y < pk.y - 0.003:
-			grid.move(k, Vector3(pk.x, new_y, pk.z))
+		if _drop_to_support(k):
 			if not moved.has(k):
 				moved.append(k)
 				moved_from_y.append(pk.y)
 			_queue_resting_on(k, pk, queue)
 	return moved
+
+
+## Lowers every object to its highest touching supporter (or the floor), lowest first so a stack follows its base.
+## Run once after build(), because the height-field placement can leave objects embedded beside a higher neighbour with
+## nothing under them. Returns how many moved (0 on a settled layout).
+func settle_all() -> int:
+	var order: Array = range(ids.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return grid.positions[a].y < grid.positions[b].y)
+	var moved: int = 0
+	for k: int in order:
+		if _drop_to_support(k):
+			moved += 1
+	return moved
+
+
+## Drops object k onto the highest lower object it touches, or the floor. Returns true if it moved.
+func _drop_to_support(k: int) -> bool:
+	var pk: Vector3 = grid.positions[k]
+	var new_y: float = half_vert[k]
+	for m in grid.query_below(pk, _reach(k), pk.y + 0.1): # supporters can be far below, not just nearby
+		var pm: Vector3 = grid.positions[m]
+		if m != k and pm.y < pk.y and _touching(pk, rot[k], half[k], pm, rot[m], half[m]):
+			new_y = maxf(new_y, pm.y + half_vert[m] + half_vert[k])
+	if new_y >= pk.y - 0.003:
+		return false
+	grid.move(k, Vector3(pk.x, new_y, pk.z))
+	return true
 
 
 ## Queues the objects that sat on object j when j was at old_pos.
