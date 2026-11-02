@@ -150,7 +150,7 @@ Open question: a toss lands the object in the ring beside the pile, not back in 
 
 Review 3 (of b8b2291 + 6c56cc5, export + benchmark): no blockers/bugs. Verified export content, clean boot from the pack,
 seed= reproducibility, mutation-checked the bad-index test. Notes: the pack boot does not exercise the embedded-PCK path of the
-.exe or the Windows runtime (REPORT already says the .exe was never run); disabled shop/magnet content still ships (see Ideas).
+.exe or the Windows runtime (REPORT already says the .exe was never run).
 
 Review 4 (of 648368e + 1b9cc86, soak + settle fix): no blockers. 14 of 15 mutations were caught. Findings and my response:
 - BUG (test gap): a lost target was not caught (soak never tossed the target on purpose). -> soak now picks or quick-tosses the
@@ -188,13 +188,8 @@ hide a chain-order bug; the soak's floating check partly covers it); the node-le
 ## Blocked / skipped
 
 ## Questions for you
-- Pile placement (see 5.4): OK to let objects that rest on nothing after build drop to their supports? It tidies the look but
-  makes piles a bit lower/denser, which touches "pile sizes".
 - Windows presentation floor is unmeasured (no Windows machine here). Worth a 30 s run of
   `tests/frame_profile.tscn` and `tests/fps_benchmark.tscn` on the target machine.
 
 ## Ideas (not implemented, design-related)
-- Shop/magnet are disabled but still shipped: `shop_terminal.tscn`, `shop_menu.tscn`, `magnet_mesh_factory.gd` and the `open_shop`
-  input action (B) are in the Windows build though nothing instantiates them. Fine for now; strip them from the export filter
-  if you want a smaller build.
 - Round key presses during the 5-20 loading frames are dropped by design; queueing the last press would feel nicer.

@@ -16,7 +16,6 @@ var _tween: Tween
 func _ready() -> void:
 	pivot_offset = Vector2(0.0, size.y * 0.5)
 	Economy.money_changed.connect(_on_money_changed)
-	Economy.money_spent.connect(func(_amount: int, total: int) -> void: _target = total)
 	_refresh()
 
 
